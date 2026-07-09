@@ -28,6 +28,37 @@ export const ASPECT_LESSONS: Record<string, string> = {
 
 export const badgeLabel = (type: string) => (type === 'WALKING' ? 'TODAY' : type);
 
+// Kerykeion abbreviates signs ("Gem"); chart_json stores those abbreviations.
+// content_natal (and the other content tables) key on full names ("Gemini"),
+// so expand before querying and for display.
+export const SIGN_NAMES: Record<string, string> = {
+  Ari: 'Aries', Tau: 'Taurus', Gem: 'Gemini', Can: 'Cancer',
+  Leo: 'Leo', Vir: 'Virgo', Lib: 'Libra', Sco: 'Scorpio',
+  Sag: 'Sagittarius', Cap: 'Capricorn', Aqu: 'Aquarius', Pis: 'Pisces',
+};
+
+export const expandSign = (abbr: string): string => SIGN_NAMES[abbr] ?? abbr;
+
+// chart_json stores houses as "Tenth_House"; content_natal.house is an int 1–12.
+const HOUSE_NUMBERS: Record<string, number> = {
+  First_House: 1, Second_House: 2, Third_House: 3, Fourth_House: 4,
+  Fifth_House: 5, Sixth_House: 6, Seventh_House: 7, Eighth_House: 8,
+  Ninth_House: 9, Tenth_House: 10, Eleventh_House: 11, Twelfth_House: 12,
+};
+
+export const houseNumber = (house: string | number | null | undefined): number | null => {
+  if (typeof house === 'number') return house;
+  if (!house) return null;
+  return HOUSE_NUMBERS[house] ?? null;
+};
+
+const ORDINALS = [
+  '', '1st', '2nd', '3rd', '4th', '5th', '6th',
+  '7th', '8th', '9th', '10th', '11th', '12th',
+];
+export const houseOrdinal = (n: number | null): string =>
+  n && n >= 1 && n <= 12 ? ORDINALS[n] : '';
+
 // Shared across the Today "Why?" badge and the Journal list/detail badges,
 // so an entry always looks the same whichever screen it's read from.
 export const BADGE_COLORS: Record<string, string> = {
