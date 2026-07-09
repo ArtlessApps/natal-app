@@ -1,11 +1,12 @@
 // The payoff screen. Reads the freshly saved chart and presents
 // Sun / Moon / Rising. Also the perfect moment to ask for
-// notification permission — but that's Step 6; a TODO marks the spot.
+// notification permission (PRD 4.1) — maximum delight = best opt-in rate.
 import { useEffect, useState } from 'react';
 import { View, Text, Pressable, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
-import { supabase } from '../lib/supabase';
-import { colors } from '../constants/theme';
+import { supabase } from '@/lib/supabase';
+import { registerForPushNotifications } from '@/lib/notifications';
+import { colors } from '@/constants/theme';
 
 // Kerykeion abbreviates signs ("Gem"); we present them properly.
 const SIGN_NAMES: Record<string, string> = {
@@ -25,6 +26,9 @@ export default function Reveal() {
   const router = useRouter();
   const [big3, setBig3] = useState<{ sun: string; moon: string; rising: string } | null>(null);
   const [timeKnown, setTimeKnown] = useState(true);
+  // True once we've asked (or skipped) — CTA stays disabled until then so
+  // the permission prompt isn't racing the navigation away from this screen.
+  const [pushReady, setPushReady] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(async ({ data: { user } }) => {
@@ -37,6 +41,15 @@ export default function Reveal() {
       setTimeKnown(!!data?.birth_time);
     });
   }, []);
+
+  // Ask for push permission once the Big 3 is on screen — not before, so
+  // the OS dialog appears against the payoff moment, not a blank spinner.
+  useEffect(() => {
+    if (!big3) return;
+    registerForPushNotifications()
+      .catch((e) => console.warn('[push] register failed', e))
+      .finally(() => setPushReady(true));
+  }, [big3]);
 
   if (!big3) {
     return (
@@ -66,10 +79,11 @@ export default function Reveal() {
         </View>
       ))}
 
-      {/* TODO (Step 6): request notification permission RIGHT HERE —
-          the moment of maximum delight = best opt-in rate (PRD 4.1) */}
-
-      <Pressable style={styles.button} onPress={() => router.replace('/(tabs)')}>
+      <Pressable
+        style={[styles.button, !pushReady && styles.buttonDisabled]}
+        onPress={() => router.replace('/(tabs)')}
+        disabled={!pushReady}
+      >
         <Text style={styles.buttonText}>See today’s sky</Text>
       </Pressable>
     </View>
@@ -85,5 +99,6 @@ const styles = StyleSheet.create({
   cardLine: { color: colors.muted, fontSize: 14 },
   caveat: { color: colors.accent, fontSize: 12, marginTop: 8 },
   button: { backgroundColor: colors.accent, borderRadius: 12, padding: 16, alignItems: 'center', marginTop: 'auto', marginBottom: 40 },
+  buttonDisabled: { opacity: 0.5 },
   buttonText: { color: colors.bg, fontWeight: '600', fontSize: 16 },
 });

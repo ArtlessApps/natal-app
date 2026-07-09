@@ -127,7 +127,11 @@ All endpoints JSON, auth via Supabase JWT (Authorization: Bearer). Errors: `{ er
 ```
 profiles      (id → auth.users, name, birth_date, birth_time, birth_place_label,
                lat, lng, tz_str, chart_json jsonb, push_token, notify_hour_local,
-               created_at)
+               last_push_date, created_at)
+               -- tz_str: IANA zone from birth place (set at onboarding via /natal).
+               -- notify_hour_local: default 8 (PRD 4.7 ~08:00 local).
+               -- last_push_date: user's local YYYY-MM-DD of last successful daily
+               --   push; stops the hourly cron from double-sending.
 journal_entries (id, user_id, entry_date, text, transit_planet, natal_planet,
                aspect, intensity, phase, headline, body, content_id,
                created_at, updated_at)
@@ -151,7 +155,7 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 3. ✅ Onboarding flow → Supabase auth + profile + chart storage → Big 3 reveal (done / Step 3 — email-OTP sign-in, `profiles` upsert with `chart_json`, reveal screen)
 4. ✅ Today screen (reading + Why + prompt + save entry) (done / Step 4 — `journal_entries` table + RLS added, Echo card deferred to Step 9 per build order)
 5. ✅ Journal tab (list, filters, detail) (done / Step 5 — filter chips for planet/aspect/intensity/moon phase, entry detail with edit/delete + that day's reading snapshot; end-to-end tested in-browser, two bugs found and fixed: root layout's auth redirect didn't know about the `journal/[id]` stack route and bounced it back to Today, and Delete used `Alert.alert()`/`router.back()` which are no-ops/throw when there's no navigation history — replaced with an inline confirm + `router.canGoBack()` fallback)
-6. Daily push pipeline
+6. ✅ Daily push pipeline (done / Step 6 — permission asked on Big 3 reveal; Expo push token + `tz_str`/`notify_hour_local`/`last_push_date` on profiles; `POST /cron/daily-push` on natal-api sends headline via Expo Push at ~08:00 local; tap deep-links to Today. Needs EAS `projectId` + `CRON_SECRET` + hourly scheduler to go live.)
 7. Learn Levels 1–2
 8. Friends (link, guest chart, comparison, share card)
 9. Echo feature (transit-matched past entries on Today)
@@ -166,6 +170,9 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 - **`journal_entries` table lives in `supabase/migrations/0001_journal_entries.sql` but isn't applied automatically** — no Supabase CLI project is linked in this repo yet, so it has to be pasted into the Dashboard SQL editor by hand (the file is safe to re-run: `create table if not exists` + `add column if not exists`). Wire up `supabase link` + `supabase db push` (or equivalent CI step) before adding more tables, so migrations stay tracked in git and applied consistently.
 - **The Why? mini-lesson text (`src/constants/astro.ts`'s `ASPECT_LESSONS`) is a hardcoded, planet-agnostic paragraph per aspect type, not pulled from a content table.** It's a placeholder until the Learn content (Build Phase 7, `content_natal`) exists — revisit then to see if aspect-lesson copy should move into Supabase alongside it for consistency/editability.
 - **Today's `/daily` call sends raw birth data (name/date/time/lat/lng) on every request instead of a `user_id`,** matching `natal-api`'s current `DailyRequest` shape rather than the PRD §6 contract (`GET /daily?user_id&date`). Fine for MVP since the app already has the birth data locally, but revisit if `/daily` needs to become the source of truth for cooldown state (see the cooldown-tracking debt item above) — that needs a real `user_id` on the request either way.
+- **EAS `projectId` is empty in `app.json` → `extra.eas.projectId`.** `getExpoPushTokenAsync` needs a real EAS project; until `eas init` / `eas build:configure` fills this in, reveal still asks for permission but skips token storage (and the cron has nothing to send to). Fill the id, rebuild a dev client (Expo Go on Android SDK 53+ can't receive remote pushes), and re-open the app so the root-layout token refresh writes `profiles.push_token`.
+- **`POST /cron/daily-push` is implemented but not scheduled.** Set `CRON_SECRET` in `natal-api/.env`, then point an hourly scheduler at it (`curl -X POST -H "Authorization: Bearer $CRON_SECRET" https://…/cron/daily-push`). System cron, a Railway/Fly cron, or a Supabase `pg_cron` + `net.http_post` all work — pick one at deploy time. Also run `supabase/migrations/0002_profiles_push.sql` in the Dashboard so the new profile columns exist.
+- **natal-api `.env` still uses the publishable/anon key as `SUPABASE_SERVICE_KEY`.** The cron updates `last_push_date` / clears dead tokens with the service client; if RLS blocks those writes, swap in the real service-role key from the Supabase dashboard (Project Settings → API). Don't commit it.
 
 ---
 

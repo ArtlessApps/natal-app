@@ -18,7 +18,7 @@ export async function fetchNatalChart(birth: BirthData) {
     body: JSON.stringify(birth),
   });
   if (!res.ok) throw new Error(`Chart calculation failed (${res.status})`);
-  return res.json() as Promise<{ chart: any }>;
+  return res.json() as Promise<{ chart: any; tz_str: string }>;
 }
 
 export type DailyDriver = {

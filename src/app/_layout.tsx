@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react';
+import { ActivityIndicator, Platform, View } from 'react-native';
 import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ActivityIndicator, View } from 'react-native';
 import { Session } from '@supabase/supabase-js';
+import * as Notifications from 'expo-notifications';
 import { supabase } from '../lib/supabase';
+import { registerForPushNotifications } from '../lib/notifications';
 import { colors } from '../constants/theme';
 
 export default function RootLayout() {
@@ -60,6 +62,31 @@ export default function RootLayout() {
       router.replace('/(tabs)');
     }
   }, [loading, session, hasProfile, segments]);
+
+  // 4) Refresh the Expo push token whenever a signed-in, onboarded user
+  // opens the app (covers token rotation + the case where EAS projectId
+  // was filled in after they first granted permission on reveal).
+  useEffect(() => {
+    if (!session || hasProfile !== true) return;
+    registerForPushNotifications().catch((e) =>
+      console.warn('[push] token refresh failed', e)
+    );
+  }, [session, hasProfile]);
+
+  // 5) Deep-link: tapping a daily push opens the Today tab (PRD 4.7).
+  // Skip on web — Expo Push isn't available there, and the listener is a no-op.
+  useEffect(() => {
+    if (Platform.OS === 'web') return;
+    const sub = Notifications.addNotificationResponseReceivedListener((response) => {
+      const url = response.notification.request.content.data?.url;
+      if (typeof url === 'string' && url.length > 0) {
+        router.push(url as '/');
+      } else {
+        router.push('/');
+      }
+    });
+    return () => sub.remove();
+  }, [router]);
 
   if (loading) {
     return (

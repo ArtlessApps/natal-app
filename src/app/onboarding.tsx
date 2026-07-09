@@ -48,8 +48,8 @@ export default function Onboarding() {
     if (!valid || !place) return;
     setBusy(true); setError('');
     try {
-      // 1) Ask YOUR engine for the chart
-      const { chart } = await fetchNatalChart({
+      // 1) Ask YOUR engine for the chart (+ derived timezone)
+      const { chart, tz_str } = await fetchNatalChart({
         name: name.trim(),
         date,
         time: timeUnknown ? null : time,
@@ -67,7 +67,9 @@ export default function Onboarding() {
         birth_place_label: place.label,
         lat: place.lat,
         lng: place.lng,
+        tz_str,
         chart_json: chart,
+        notify_hour_local: 8, // PRD 4.7 default: ~08:00 local
       });
       if (dbError) throw dbError;
 
