@@ -43,15 +43,20 @@ export default function RootLayout() {
 
   // 3) Route based on state. segments[0] tells us where we are,
   //    so we only redirect when we're in the WRONG place (avoids loops).
+  // Top-level stack screens (outside the tab group) that a signed-in,
+  // onboarded user is allowed to be on without getting bounced back to
+  // the tabs — add new ones here as they're built (e.g. journal/[id]).
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
+    const onAllowedStackScreen = ALLOWED_STACK_SEGMENTS.includes(segments[0] ?? '');
 
     if (!session && segments[0] !== 'sign-in') {
       router.replace('/sign-in');
     } else if (session && hasProfile === false && segments[0] !== 'onboarding' && segments[0] !== 'reveal') {
       router.replace('/onboarding');
-    } else if (session && hasProfile === true && !inTabs && segments[0] !== 'reveal') {
+    } else if (session && hasProfile === true && !inTabs && !onAllowedStackScreen) {
       router.replace('/(tabs)');
     }
   }, [loading, session, hasProfile, segments]);
@@ -72,6 +77,7 @@ export default function RootLayout() {
         <Stack.Screen name="onboarding" />
         <Stack.Screen name="reveal" />
         <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="journal/[id]" />
       </Stack>
     </>
   );

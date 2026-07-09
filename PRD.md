@@ -129,7 +129,13 @@ profiles      (id → auth.users, name, birth_date, birth_time, birth_place_labe
                lat, lng, tz_str, chart_json jsonb, push_token, notify_hour_local,
                created_at)
 journal_entries (id, user_id, entry_date, text, transit_planet, natal_planet,
-               aspect, intensity, content_id, created_at, updated_at)
+               aspect, intensity, phase, headline, body, content_id,
+               created_at, updated_at)
+               -- phase: New|Full|Retrograde|Direct|null, set on WALKING days
+               --   only; powers the Journal tab's Full/New Moon filter.
+               -- headline/body: snapshot of that day's reading text at save
+               --   time, so later edits to content_* tables don't rewrite
+               --   what the user actually saw/answered (shown in entry detail).
 friends       (id, owner_id, guest_name, guest_chart_json jsonb, created_at)
 learn_progress (user_id, lesson_id, completed_at)
 ```
@@ -141,10 +147,10 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 ## 8. Build phases (implement in this order)
 
 1. ✅ Expo skeleton + 5 tabs (done / Step 1)
-2. FastAPI wrapper: `/natal` + `/daily` around existing engine
-3. Onboarding flow → Supabase auth + profile + chart storage → Big 3 reveal
-4. Today screen (reading + Why + prompt + save entry)
-5. Journal tab (list, filters, detail)
+2. ✅ FastAPI wrapper: `/natal` + `/daily` around existing engine (done / Step 2 — CORS enabled for local web testing)
+3. ✅ Onboarding flow → Supabase auth + profile + chart storage → Big 3 reveal (done / Step 3 — email-OTP sign-in, `profiles` upsert with `chart_json`, reveal screen)
+4. ✅ Today screen (reading + Why + prompt + save entry) (done / Step 4 — `journal_entries` table + RLS added, Echo card deferred to Step 9 per build order)
+5. ✅ Journal tab (list, filters, detail) (done / Step 5 — filter chips for planet/aspect/intensity/moon phase, entry detail with edit/delete + that day's reading snapshot; end-to-end tested in-browser, two bugs found and fixed: root layout's auth redirect didn't know about the `journal/[id]` stack route and bounced it back to Today, and Delete used `Alert.alert()`/`router.back()` which are no-ops/throw when there's no navigation history — replaced with an inline confirm + `router.canGoBack()` fallback)
 6. Daily push pipeline
 7. Learn Levels 1–2
 8. Friends (link, guest chart, comparison, share card)
@@ -156,6 +162,10 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 ## 8a. Known engineering debt
 
 - **Wire up real cooldown tracking in `natal-api/engine.py`'s `compute_daily()`.** Right now `_passes_cooldown()` is a no-op (always returns `True`) because a single `/daily` request has no cross-day history to check against. The original `journal_generator.py` enforces per-planet cooldowns (`PLANET_COOLDOWNS`) across its 365-day loop to stop the same aspect firing again too soon. Without that, WALKING essentially never triggers for a real chart — Moon moves fast with a generous 3° orb, so *something* is almost always in range across 10 natal planets, and nothing here ever suppresses it. Fix once per-user "last fired" state exists (naturally lands with Build Phase 3's profile/journal storage): persist `collision_key → last_fired_date` per user in Supabase, look it up in `_passes_cooldown()`, and delete the TODO.
+- **Dev-only auth bypass in `src/app/sign-in.tsx` (`devBypass`, gated by `__DEV__`) and a matching `[dev] Sign out` button on the Today tab.** Added because Supabase's built-in email sender rate-limits OTP sends hard, which made it impossible to iterate on post-auth screens. Bypass signs in/up with a fixed test email+password instead of emailing a code — only works while the Email provider's "Confirm email" setting is turned off in the Supabase dashboard. Both must be removed (and "Confirm email" turned back on) before shipping; also revisit once custom SMTP (Resend/SendGrid/etc.) is wired up, which removes the rate-limit problem at the root.
+- **`journal_entries` table lives in `supabase/migrations/0001_journal_entries.sql` but isn't applied automatically** — no Supabase CLI project is linked in this repo yet, so it has to be pasted into the Dashboard SQL editor by hand (the file is safe to re-run: `create table if not exists` + `add column if not exists`). Wire up `supabase link` + `supabase db push` (or equivalent CI step) before adding more tables, so migrations stay tracked in git and applied consistently.
+- **The Why? mini-lesson text (`src/constants/astro.ts`'s `ASPECT_LESSONS`) is a hardcoded, planet-agnostic paragraph per aspect type, not pulled from a content table.** It's a placeholder until the Learn content (Build Phase 7, `content_natal`) exists — revisit then to see if aspect-lesson copy should move into Supabase alongside it for consistency/editability.
+- **Today's `/daily` call sends raw birth data (name/date/time/lat/lng) on every request instead of a `user_id`,** matching `natal-api`'s current `DailyRequest` shape rather than the PRD §6 contract (`GET /daily?user_id&date`). Fine for MVP since the app already has the birth data locally, but revisit if `/daily` needs to become the source of truth for cooldown state (see the cooldown-tracking debt item above) — that needs a real `user_id` on the request either way.
 
 ---
 
