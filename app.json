@@ -10,7 +10,9 @@
     "ios": {
       "icon": "./assets/expo.icon",
       "infoPlist": {
-        "UIBackgroundModes": ["remote-notification"]
+        "UIBackgroundModes": [
+          "remote-notification"
+        ]
       }
     },
     "android": {
@@ -42,7 +44,8 @@
           "color": "#B8A9E8",
           "defaultChannel": "daily"
         }
-      ]
+      ],
+      "expo-sharing"
     ],
     "extra": {
       "eas": {

@@ -1,6 +1,7 @@
-// Today tab (PRD 4.2): the daily reading, the "Why?" disclosure, and the
-// journal prompt. Loads the signed-in user's saved birth data, asks the
-// API to compute today's reading for it, then renders the result.
+// Today tab (PRD 4.2): the daily reading, the "Why?" disclosure, the
+// journal prompt, and Echo (past entry matching today's transit). Loads
+// the signed-in user's saved birth data, asks the API to compute today's
+// reading for it, then renders the result.
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
@@ -8,6 +9,9 @@ import { fetchDaily, type DailyReading } from '@/lib/api';
 import { colors } from '@/constants/theme';
 import WhyDisclosure from '@/components/why-disclosure';
 import JournalPrompt from '@/components/journal-prompt';
+import EchoCard from '@/components/echo-card';
+import ShareCard from '@/components/share-card';
+import { useShareCard } from '@/lib/use-share-card';
 
 type Profile = {
   name: string;
@@ -29,6 +33,7 @@ export default function TodayScreen() {
   const [userId, setUserId] = useState<string | null>(null);
   const [reading, setReading] = useState<DailyReading | null>(null);
   const [error, setError] = useState('');
+  const { cardRef, share, sharing } = useShareCard();
   const date = todayLocal();
 
   useEffect(() => {
@@ -98,6 +103,31 @@ export default function TodayScreen() {
             headline={reading.headline}
             body={reading.body}
           />
+
+          <EchoCard
+            userId={userId}
+            entryDate={date}
+            driver={reading.driver}
+          />
+
+          <Pressable style={styles.shareButton} onPress={share} disabled={sharing}>
+            <Text style={styles.shareButtonText}>
+              {sharing ? 'Preparing…' : 'Share today'}
+            </Text>
+          </Pressable>
+
+          {/* Off-screen render target — fully laid out but parked far off-screen. */}
+          <View style={{ position: 'absolute', left: -9999 }}>
+            <ShareCard
+              ref={cardRef}
+              data={{
+                variant: 'today',
+                headline: reading.headline ?? 'Today',
+                intensity: reading.type,
+                dateLabel: headerDate,
+              }}
+            />
+          </View>
         </>
       )}
 
@@ -118,6 +148,11 @@ const styles = StyleSheet.create({
   body: { color: colors.text, fontSize: 16, lineHeight: 24, marginTop: 16, opacity: 0.9 },
   spinner: { marginTop: 60 },
   error: { color: colors.error, marginTop: 40, textAlign: 'center' },
+  shareButton: {
+    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent,
+    borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 16,
+  },
+  shareButtonText: { color: colors.accent, fontWeight: '600', fontSize: 15 },
   signOut: { alignSelf: 'center', marginTop: 40 },
   signOutText: { color: colors.accent },
 });
