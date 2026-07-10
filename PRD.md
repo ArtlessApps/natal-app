@@ -158,6 +158,7 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 6. ✅ Daily push pipeline (done / Step 6 — permission asked on Big 3 reveal; Expo push token + `tz_str`/`notify_hour_local`/`last_push_date` on profiles; `POST /cron/daily-push` on natal-api sends headline via Expo Push at ~08:00 local; tap deep-links to Today. Needs EAS `projectId` + `CRON_SECRET` + hourly scheduler to go live.)
 7. ✅ Learn Levels 1–2 (done / Step 7 — `LEVELS` catalog in `src/constants/lessons.ts`; Learn tab shows a level path + "% of your chart you can read" progress bar; lesson detail pulls the user's own placement from `profiles.chart_json` and the long-form reading from `content_natal` read directly with the authed session; `learn_progress` table + `content_natal` read RLS in `supabase/migrations/0003_learn.sql`; Levels 3–5 locked → paywall stub at `learn/paywall`. Level 2 ships **8** planet lessons (Mercury…Pluto), not the PRD's "7" — see debt.)
 8. ✅ Friends (done / Step 8 — `friends` table + owner-only RLS in `supabase/migrations/0004_friends.sql`; Friends tab lists guest charts with their Big 3; add-friend enters birth data via a shared `BirthDataForm` → `/natal` → stores `guest_chart_json`; comparison screen shows side-by-side Big 3 + 4 synastry-lite insights (Sun–Sun, Moon–Moon, Venus↔Mars both ways) from a new `POST /compat` on natal-api (`compat.py`, reuses the engine's degree/aspect math); shareable Big 3 card via the OS share sheet. Free cap = 3 friends enforced. End-to-end tested in-browser (add → compare → share → remove all pass); one bug found and fixed: the place-search list keyed on `display_name`, which Nominatim can return twice (duplicate-key warning) — fixed in the shared `BirthDataForm` and `onboarding.tsx`. **Deviations/debt below.**)
+    - **Step 8.5 (watermarked share cards):** two story-sized (9:16) share cards with a built-in watermark — a **Big 3** card (Sun/Moon/Rising identity flex) and a **Today** card (headline + intensity badge). Render a normal React Native component off-screen, capture it to a crisp 1080×1920 PNG via `react-native-view-shot`, and open the native share sheet with `expo-sharing`. Full spec in **§8.5** below.
 9. Echo feature (transit-matched past entries on Today)
 10. Polish: My Chart list, paywall stub, App Store assets, EAS build + TestFlight
 
@@ -181,6 +182,352 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 - **`supabase/migrations/0004_friends.sql` (friends table + RLS) isn't applied automatically** — same unlinked-CLI issue as 0001–0003; paste it into the Dashboard SQL editor (safe to re-run).
 - **Free-tier friend cap (3) is enforced but there's no upsell/paywall path** — at the limit the "Add a friend" button is disabled with a note. Wire it to the paywall stub once premium (RevenueCat) exists; the hard `MAX_FRIENDS = 20` ceiling in `lib/friends.ts` isn't separately enforced yet since the free cap is lower.
 - **Rising lesson maps to `content_natal` rows keyed `planet='Ascendant'`, `house=1`** — matching the reference `journal_generator.py` (`get_natal_content(client, "Ascendant", asc_sign, 1)`), so those rows exist. Any placement with no matching `content_natal` row (a gap in the table) degrades gracefully to the planet-agnostic intro + a "deeper reading coming soon" line rather than erroring.
+
+---
+
+## 8.5 — Watermarked Share Cards (Cursor-Ready)
+
+**Goal:** two beautiful, story-sized (9:16) share cards, each with a built-in watermark:
+1. **Big 3 card** — Sun / Moon / Rising (the identity flex — this is the one people will post)
+2. **Today card** — today's headline + intensity badge
+
+Tapping "Share" renders the card as an image and opens the phone's native share sheet (Instagram, iMessage, save to photos — the OS handles all destinations).
+
+**Time estimate:** 1–2 hours.
+
+**How it works (the one concept in this step):** we don't "generate an image" with a graphics library. We build the card as a normal React Native component — same Views and Texts you've used everywhere — render it invisibly off-screen, then use `react-native-view-shot` to **screenshot that component** into a PNG. Design in code, ship as pixels.
+
+**Web caveat:** component-to-image capture is unreliable in the browser. Build this step, but test it on your dev build / device (you have one from Step 6's push work). On web, the share button can no-op with a console note.
+
+> **Note (supersedes part of §8a debt):** this step is the earlier pull-in of the `react-native-view-shot` + `expo-sharing` work that the Friends "Share this card" debt item deferred to Build Phase 10. Once shipped, the Friends Big 3 compare card can reuse the same `useShareCard` hook to share a rendered PNG instead of text.
+
+---
+
+### 8.5A. Install
+
+In `natal-app`:
+
+```bash
+npx expo install react-native-view-shot expo-sharing
+```
+
+- **react-native-view-shot** — screenshots a component into an image file
+- **expo-sharing** — opens the native share sheet with that file
+
+---
+
+### 8.5B. The card component
+
+One component, two variants. It renders at 360×640 logical points; the hook (§8.5C) captures it at a fixed **1080×1920** output → a crisp, device-independent story-sized PNG.
+
+**Create:** `src/components/share-card.tsx` (kebab-case + under `src/`, matching the repo — e.g. `big3-compare-card.tsx`)
+
+```tsx
+// The shareable card. This is a NORMAL presentational component — we just
+// position it off-screen and photograph it. Change the design here, the
+// image changes. Signs arrive already-expanded ("Gemini"); expand at the
+// call site with expandSign() from @/constants/astro.
+import { forwardRef } from 'react';
+import { StyleSheet, Text, View } from 'react-native';
+import { colors } from '@/constants/theme';
+import { badgeLabel, BADGE_COLORS } from '@/constants/astro';
+import type { DailyReading } from '@/lib/api';
+
+// ---- Types for the two card variants ----
+export type Big3CardData = {
+  variant: 'big3';
+  name: string;
+  sun: string;     // already pretty-printed, e.g. "Gemini"
+  moon: string;
+  rising: string;
+  risingApprox?: boolean; // birth time unknown
+};
+
+export type TodayCardData = {
+  variant: 'today';
+  headline: string;
+  intensity: DailyReading['type']; // 'COLLISION' | 'TRANSIT' | 'RIPPLE' | 'WALKING'
+  dateLabel: string; // e.g. "Thursday, July 9"
+};
+
+type Props = { data: Big3CardData | TodayCardData };
+
+// forwardRef lets the parent hand us a ref that view-shot can photograph.
+const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
+  return (
+    // collapsable={false} stops Android from optimizing this View away
+    // before the screenshot happens.
+    <View ref={ref} collapsable={false} style={styles.card}>
+      {/* Decorative star field — cheap texture with absolutely-positioned dots */}
+      {STARS.map((s, i) => (
+        <View key={i} style={[styles.star, { top: s.top, left: s.left, opacity: s.o }]} />
+      ))}
+
+      {data.variant === 'big3' ? (
+        <View style={styles.body}>
+          <Text style={styles.eyebrow}>{data.name.toUpperCase()}’S BIG 3</Text>
+          <Big3Row label="Sun" sign={data.sun} line="the engine" />
+          <Big3Row label="Moon" sign={data.moon} line="the weather" />
+          <Big3Row
+            label="Rising"
+            sign={data.rising}
+            line={data.risingApprox ? 'the doorway (approx.)' : 'the doorway'}
+          />
+        </View>
+      ) : (
+        <View style={styles.body}>
+          <Text style={styles.eyebrow}>{data.dateLabel.toUpperCase()}</Text>
+          {/* Same label + colors the app's other badges use (WALKING shows
+              as "TODAY"), from @/constants/astro. */}
+          <View style={[styles.badge, { borderColor: BADGE_COLORS[data.intensity] }]}>
+            <Text style={[styles.badgeText, { color: BADGE_COLORS[data.intensity] }]}>
+              {badgeLabel(data.intensity)}
+            </Text>
+          </View>
+          <Text style={styles.headline}>{data.headline}</Text>
+        </View>
+      )}
+
+      {/* THE WATERMARK — styled as the card's signature, not a stamp.
+          Swap the URL for the App Store link once it exists. */}
+      <View style={styles.watermark}>
+        <Text style={styles.wordmark}>NATAL</Text>
+        <Text style={styles.url}>nataljournal.com</Text>
+      </View>
+    </View>
+  );
+});
+
+ShareCard.displayName = 'ShareCard';
+
+function Big3Row({ label, sign, line }: { label: string; sign: string; line: string }) {
+  return (
+    <View style={styles.row}>
+      <Text style={styles.rowLabel}>{label}</Text>
+      <Text style={styles.rowSign}>{sign}</Text>
+      <Text style={styles.rowLine}>{line}</Text>
+    </View>
+  );
+}
+
+// Fixed "random" star positions — hardcoded so every card renders identically.
+const STARS = [
+  { top: 40, left: 30, o: 0.5 }, { top: 90, left: 300, o: 0.3 },
+  { top: 150, left: 120, o: 0.4 }, { top: 210, left: 330, o: 0.5 },
+  { top: 480, left: 40, o: 0.3 }, { top: 520, left: 280, o: 0.45 },
+  { top: 570, left: 150, o: 0.35 }, { top: 60, left: 200, o: 0.25 },
+];
+
+const styles = StyleSheet.create({
+  card: {
+    width: 360,
+    height: 640,               // 9:16 — story format
+    backgroundColor: colors.bg,
+    borderRadius: 0,           // stories are full-bleed; no rounding
+    padding: 32,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  star: {
+    position: 'absolute', width: 3, height: 3, borderRadius: 2,
+    backgroundColor: colors.text,
+  },
+  body: { flex: 1, justifyContent: 'center' },
+  eyebrow: {
+    color: colors.muted, letterSpacing: 4, fontSize: 12,
+    textAlign: 'center', marginBottom: 28,
+  },
+  row: { alignItems: 'center', marginBottom: 26 },
+  rowLabel: { color: colors.muted, fontSize: 13 },
+  rowSign: { color: colors.text, fontSize: 34, fontWeight: '700', marginVertical: 2 },
+  rowLine: { color: colors.accent, fontSize: 13 },
+  // borderColor + text color are set inline from BADGE_COLORS per intensity.
+  badge: {
+    alignSelf: 'center', borderWidth: 1,
+    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, marginBottom: 22,
+  },
+  badgeText: { fontSize: 11, letterSpacing: 2 },
+  headline: {
+    color: colors.text, fontSize: 26, fontWeight: '600',
+    textAlign: 'center', lineHeight: 36,
+  },
+  watermark: { alignItems: 'center' },
+  wordmark: { color: colors.text, letterSpacing: 6, fontSize: 14, fontWeight: '700' },
+  url: { color: colors.muted, fontSize: 11, marginTop: 4 },
+});
+
+export default ShareCard;
+```
+
+---
+
+### 8.5C. The share hook
+
+One reusable hook: photograph the ref → open the share sheet.
+
+**Create:** `src/lib/use-share-card.ts`
+
+```ts
+// Reusable share logic: capture a component ref as a PNG, open the share sheet.
+import { useRef, useState } from 'react';
+import { PixelRatio, Platform, View } from 'react-native';
+import { captureRef } from 'react-native-view-shot';
+import * as Sharing from 'expo-sharing';
+
+// Story format. captureRef's width/height are LOGICAL points, so divide the
+// target PHYSICAL pixels by PixelRatio.get() to land on a consistent
+// 1080×1920 file on every device. (The older `pixelRatio` option is
+// undocumented and device-dependent — use width/height per the Expo docs.)
+const TARGET_W = 1080;
+const TARGET_H = 1920;
+
+export function useShareCard() {
+  const cardRef = useRef<View>(null);
+  const [sharing, setSharing] = useState(false);
+
+  async function share() {
+    if (Platform.OS === 'web') {
+      console.log('Share cards: test on device — capture is unreliable on web.');
+      return;
+    }
+    if (!cardRef.current) return;
+    setSharing(true);
+    try {
+      const pr = PixelRatio.get();
+      const uri = await captureRef(cardRef, {
+        format: 'png',
+        quality: 1,
+        result: 'tmpfile',
+        width: TARGET_W / pr,
+        height: TARGET_H / pr,
+      });
+      // Some simulators report false here — test the sheet on a real device.
+      if (!(await Sharing.isAvailableAsync())) {
+        console.log('Sharing not available on this device.');
+        return;
+      }
+      await Sharing.shareAsync(uri, {
+        mimeType: 'image/png',
+        dialogTitle: 'Share your card',
+      });
+      // TODO (analytics): log a "share_completed" event here with the card
+      // variant — the data that settles the share vs. compare growth bet.
+    } finally {
+      setSharing(false);
+    }
+  }
+
+  return { cardRef, share, sharing };
+}
+```
+
+---
+
+### 8.5D. Wire it into the screens
+
+The pattern — the card sits in the tree but **off-screen** (parked 9999px left), so it's fully laid out and photographable without ever being visible. Expand sign codes with the existing `expandSign()` from `@/constants/astro` (the same helper `reveal.tsx` and `big3-compare-card.tsx` already use — no new `pretty()`/`format.ts` needed).
+
+**Big 3 card → `src/app/reveal.tsx`.** The Big 3 payoff screen already fetches `chart_json.big3` + `birth_time`, so it's the natural home today. (The same card should also land on the **My Chart** tab, but `src/app/(tabs)/chart.tsx` is still a `PlaceholderScreen` — that tab is Build Phase 10.) Additions only:
+
+```tsx
+import ShareCard from '@/components/share-card';
+import { useShareCard } from '@/lib/use-share-card';
+import { expandSign } from '@/constants/astro';
+
+// Widen the existing profile fetch to include `name`, and keep it in state:
+//   .select('name, chart_json, birth_time')
+const [name, setName] = useState('');
+// ...inside that same .then(): setName(data?.name ?? '');
+
+// In the component body (big3 + timeKnown already exist here):
+const { cardRef, share, sharing } = useShareCard();
+
+// In the JSX, e.g. above the "See today’s sky" button:
+<Pressable style={styles.shareButton} onPress={share} disabled={sharing}>
+  <Text style={styles.shareButtonText}>
+    {sharing ? 'Preparing…' : 'Share my Big 3'}
+  </Text>
+</Pressable>
+
+{/* Off-screen render target — fully laid out but parked far off-screen. */}
+<View style={{ position: 'absolute', left: -9999 }}>
+  <ShareCard
+    ref={cardRef}
+    data={{
+      variant: 'big3',
+      name,
+      sun: expandSign(big3.sun),
+      moon: expandSign(big3.moon),
+      rising: expandSign(big3.rising),
+      risingApprox: !timeKnown,
+    }}
+  />
+</View>
+```
+
+**Today card → `src/app/(tabs)/index.tsx`.** The Today tab already holds `reading: DailyReading` and the formatted `headerDate`. Additions only, inside the existing `reading && userId` block:
+
+```tsx
+import ShareCard from '@/components/share-card';
+import { useShareCard } from '@/lib/use-share-card';
+
+// In the component body:
+const { cardRef, share, sharing } = useShareCard();
+
+// After <JournalPrompt /> inside the `reading && userId` fragment:
+<Pressable style={styles.shareButton} onPress={share} disabled={sharing}>
+  <Text style={styles.shareButtonText}>
+    {sharing ? 'Preparing…' : 'Share today'}
+  </Text>
+</Pressable>
+
+<View style={{ position: 'absolute', left: -9999 }}>
+  <ShareCard
+    ref={cardRef}
+    data={{
+      variant: 'today',
+      headline: reading.headline ?? 'Today',
+      intensity: reading.type,
+      dateLabel: headerDate,
+    }}
+  />
+</View>
+```
+
+Add the button styles to each screen's `StyleSheet` (mirrors the Friends `shareBtn` in `friends/[id].tsx`):
+
+```tsx
+shareButton: {
+  backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent,
+  borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 16,
+},
+shareButtonText: { color: colors.accent, fontWeight: '600', fontSize: 15 },
+```
+
+---
+
+### ✅ Done when (on your dev build / device):
+
+- [ ] "Share my Big 3" opens the native share sheet with a crisp 1080×1920 card
+- [ ] Watermark reads NATAL / nataljournal.com and looks like part of the design
+- [ ] Saving to Photos and posting to an IG story both look right (text not clipped, full-bleed)
+- [ ] Today card shows headline + intensity badge correctly
+- [ ] Unknown-birth-time users see "(approx.)" on Rising
+
+### If something breaks:
+
+- **Captured image is blank/black (Android)** → make sure `collapsable={false}` is on the card's root View and the card has an explicit backgroundColor.
+- **Card looks cut off** → the off-screen wrapper must not constrain size; keep it exactly `position: 'absolute', left: -9999` with no width/height.
+- **Share sheet doesn't open** → `Sharing.isAvailableAsync()` is false on some simulators; test on a real device.
+- **Blurry / wrong-size output** → confirm `width`/`height` (target ÷ `PixelRatio.get()`) made it into the `captureRef` options, and that the card had finished layout before capture (it will, once it's mounted off-screen in the tree).
+
+---
+
+**Growth-lever scorecard (revisit in ~4 weeks):**
+- Share cards → count share_completed by variant
+- Compare links → count link_sent / guest_chart_completed / guest_signup
+
+Whichever converts, feed it. If Big 3 cards dominate, add more card variants (journal-streak card, Echo card). If compare links convert better, make "Compare with someone" more prominent on Today.
 
 ---
 
