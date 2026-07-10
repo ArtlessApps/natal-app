@@ -79,12 +79,16 @@ export default function LearnScreen() {
                 <Text style={styles.lockRowText}>🔒 Unlock this level</Text>
               </Pressable>
             ) : (
-              chart && level.lessons.map((lesson) => {
-                const placement = resolvePlacement(chart, lesson.planetKey, birthTimeKnown);
+              level.lessons.map((lesson) => {
+                const placement = chart && lesson.planetKey
+                  ? resolvePlacement(chart, lesson.planetKey, birthTimeKnown)
+                  : null;
                 const isDone = completed.has(lesson.id);
-                const sub = placement
-                  ? `${expandSign(placement.signAbbr)}${placement.house ? ` · ${houseOrdinal(placement.house)} house` : ''}`
-                  : 'Not in your chart';
+                const sub = !lesson.planetKey
+                  ? lesson.intro
+                  : placement
+                    ? `${expandSign(placement.signAbbr)}${placement.house ? ` · ${houseOrdinal(placement.house)} house` : ''}`
+                    : 'Not in your chart';
                 return (
                   <Pressable
                     key={lesson.id}

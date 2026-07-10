@@ -12,12 +12,19 @@
 // planetKey is what we query content_natal.planet by (case-insensitive) and
 // how we find the placement in chart_json. 'Ascendant' = the Rising sign
 // (1st-house cusp), which lives in chart_json.big3.rising, not placements.
+// Static "concept" lessons (Level 0) have no planetKey — they're the same
+// for everyone and carry their full text in `body`.
 export type Lesson = {
   id: string;
   title: string;
-  planetKey: string;
-  // Short, planet-agnostic "what this placement governs" intro.
+  // The planet this lesson reads from the user's chart.
+  // Leave it off for static lessons.
+  planetKey?: string;
+  // One-liner shown under the title in the Learn list, and above the body.
   intro: string;
+  // Full lesson text for static lessons. Placement lessons don't use this —
+  // their long-form reading comes from content_natal instead.
+  body?: string;
 };
 
 export type Level = {
@@ -30,6 +37,57 @@ export type Level = {
 };
 
 export const LEVELS: Level[] = [
+  {
+    id: 'basics',
+    index: 0,
+    title: 'The Basics',
+    subtitle: 'How any of this works, in four short reads.',
+    locked: false,
+    lessons: [
+      {
+        id: 'basics-birth-chart',
+        title: 'What is a birth chart?',
+        intro: 'The snapshot of the sky you were born under.',
+        body:
+          'At the exact moment you were born, every planet was sitting somewhere specific in the sky. Your birth chart is a snapshot of that moment, taken from the exact spot on Earth where you were born.\n\n' +
+          'Think of it as a cosmic fingerprint. No two are alike — not even for twins born minutes apart.\n\n' +
+          'Everything in this app is built from yours. Not a generic horoscope shared by everyone with your sun sign. Your date, your time, your place.\n\n' +
+          'You don\u2019t need to learn the math. We did the calculations. The lessons ahead just walk you through what came out — one placement at a time.',
+      },
+      {
+        id: 'basics-cosmic-weather',
+        title: 'The cosmic weather',
+        intro: 'Your chart is the location. The planets are the weather.',
+        body:
+          'Your birth chart is a freeze-frame. But the planets didn\u2019t stop moving after you were born.\n\n' +
+          'Every day, as they continue their orbits, they interact with the positions in your chart — and different areas of your life light up.\n\n' +
+          'Weather is the easiest way to think about it. Your birth chart is your location. It never changes. The moving planets are the weather passing through. Some days bring gentle sun. Some bring storms.\n\n' +
+          'That\u2019s what your daily reading is: a weather report for your exact spot in the sky. Same sky as everyone else, different forecast.',
+      },
+      {
+        id: 'basics-intensity',
+        title: 'Why some days feel bigger',
+        intro: 'Slow planets write chapters. Fast ones make ripples.',
+        body:
+          'Not every planetary movement hits the same.\n\n' +
+          'The slow ones — Saturn, Uranus, Neptune, Pluto — create themes that last weeks or months. These are the big chapters. The shifts that unfold slowly, quietly, and for keeps.\n\n' +
+          'The fast ones — the Moon, Mercury, Venus — make daily ripples. Subtle emotional weather you might not consciously clock, but it colors the day.\n\n' +
+          'Mars, Jupiter, and the Sun sit in between. Present, but manageable.\n\n' +
+          'You\u2019ll see this in the badge on your daily reading — some days are collisions, some are ripples. You don\u2019t need to memorize any of it. Just notice which days feel profound and which barely register. Over time, that tells you which weather matters most to you.',
+      },
+      {
+        id: 'basics-mirror',
+        title: 'A mirror, not a map',
+        intro: 'A self-awareness tool, not fortune-telling.',
+        body:
+          'One thing worth settling before your first lesson: none of this predicts your future.\n\n' +
+          'The stars don\u2019t control you. They mirror cycles already moving through your life. A reading reflects a pattern — you decide what it means.\n\n' +
+          'Some days will feel uncannily accurate. Others won\u2019t land at all. Both are useful. When something doesn\u2019t resonate, it\u2019s worth asking why not. That\u2019s data too.\n\n' +
+          'You might not always see the connection right away. Sometimes the dots take weeks to connect. That\u2019s how it\u2019s supposed to work.\n\n' +
+          'Mirror, not map. Awareness, not destiny.',
+      },
+    ],
+  },
   {
     id: 'big3',
     index: 1,
@@ -117,7 +175,9 @@ export const findLesson = (id: string): { lesson: Lesson; level: Level } | null 
 // planetKey (e.g. "Sun", "Ascendant") → lesson id, for screens (My Chart)
 // that need to link a raw placement straight to its Learn lesson.
 const LESSON_ID_BY_PLANET_KEY: Record<string, string> = Object.fromEntries(
-  ALL_UNLOCKABLE_LESSONS.map((l) => [l.planetKey.toLowerCase(), l.id]),
+  ALL_UNLOCKABLE_LESSONS
+    .filter((l) => l.planetKey)
+    .map((l) => [l.planetKey!.toLowerCase(), l.id]),
 );
 export const lessonIdForPlanetKey = (planetKey: string): string | null =>
   LESSON_ID_BY_PLANET_KEY[planetKey.toLowerCase()] ?? null;

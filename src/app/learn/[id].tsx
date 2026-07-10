@@ -38,7 +38,7 @@ export default function LessonDetail() {
         ]);
         if (!active) return;
         setDone(completed.has(found.lesson.id));
-        if (chart) {
+        if (chart && found.lesson.planetKey) {
           const pl = resolvePlacement(chart, found.lesson.planetKey, birthTimeKnown);
           setPlacement(pl);
           if (pl) {
@@ -93,7 +93,8 @@ export default function LessonDetail() {
   }
 
   const { lesson, level } = found;
-  const glyph = PLANET_GLYPHS[lesson.planetKey] ?? '✦';
+  const isStatic = !lesson.planetKey;
+  const glyph = lesson.planetKey ? (PLANET_GLYPHS[lesson.planetKey] ?? '✦') : '✦';
 
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
@@ -102,7 +103,7 @@ export default function LessonDetail() {
       <Text style={styles.eyebrow}>LEVEL {level.index} · {level.title.toUpperCase()}</Text>
       <Text style={styles.title}>{lesson.title}</Text>
 
-      {placement ? (
+      {!isStatic && (placement ? (
         <View style={styles.placementCard}>
           <Text style={styles.glyph}>{glyph}</Text>
           <Text style={styles.placementSign}>{expandSign(placement.signAbbr)}</Text>
@@ -118,11 +119,13 @@ export default function LessonDetail() {
         <View style={styles.placementCard}>
           <Text style={styles.placementMeta}>This placement isn’t in your chart.</Text>
         </View>
-      )}
+      ))}
 
       <Text style={styles.intro}>{lesson.intro}</Text>
 
-      {content ? (
+      {isStatic ? (
+        <Text style={styles.body}>{lesson.body}</Text>
+      ) : content ? (
         <Text style={styles.body}>{content}</Text>
       ) : (
         placement && (
