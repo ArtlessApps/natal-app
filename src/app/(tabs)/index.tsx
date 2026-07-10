@@ -132,11 +132,11 @@ export default function TodayScreen() {
         </>
       )}
 
-      {__DEV__ && (
-        <Pressable style={styles.signOut} onPress={() => supabase.auth.signOut()}>
-          <Text style={styles.signOutText}>[dev] Sign out</Text>
-        </Pressable>
-      )}
+      {/* The only sign-out control in the app (no Settings screen yet) —
+          kept here, unlabeled as "dev", so testers can actually sign out. */}
+      <Pressable style={styles.signOut} onPress={() => supabase.auth.signOut()}>
+        <Text style={styles.signOutText}>Sign out</Text>
+      </Pressable>
     </ScrollView>
   );
 }

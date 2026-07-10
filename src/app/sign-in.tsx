@@ -35,22 +35,6 @@ export default function SignIn() {
     // On success the root layout hears the auth change and routes us. No navigation needed here.
   }
 
-  // Dev-only bypass so Supabase's email-OTP rate limit doesn't block testing
-  // the rest of the app. Requires "Confirm email" turned off for the Email
-  // provider in the Supabase dashboard (Authentication → Providers → Email),
-  // otherwise sign-up still tries to send a confirmation email.
-  async function devBypass() {
-    setBusy(true); setError('');
-    const testEmail = email.trim() || 'dev@test.local';
-    const testPassword = 'dev-test-password-123';
-    let { error } = await supabase.auth.signInWithPassword({ email: testEmail, password: testPassword });
-    if (error) {
-      ({ error } = await supabase.auth.signUp({ email: testEmail, password: testPassword }));
-    }
-    setBusy(false);
-    if (error) setError(error.message);
-  }
-
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Natal</Text>
@@ -93,12 +77,6 @@ export default function SignIn() {
       )}
 
       {!!error && <Text style={styles.error}>{error}</Text>}
-
-      {__DEV__ && (
-        <Pressable onPress={devBypass} disabled={busy}>
-          <Text style={styles.link}>[dev] Skip email — sign in with test account</Text>
-        </Pressable>
-      )}
     </View>
   );
 }

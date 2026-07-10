@@ -83,7 +83,7 @@ export default function ChartScreen() {
           const lessonId = lessonIdForPlanetKey(planetKey);
           if (lessonId) router.push(`/learn/${lessonId}`);
         }}
-        onHousePress={() => router.push('/learn/paywall')}
+        onHousePress={() => router.push('/learn/paywall?reason=houses')}
       />
 
       <Text style={[styles.sectionLabel, styles.big3Label]}>YOUR BIG 3</Text>

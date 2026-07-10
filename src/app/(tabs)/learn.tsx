@@ -75,7 +75,10 @@ export default function LearnScreen() {
             <Text style={styles.levelSubtitle}>{level.subtitle}</Text>
 
             {level.locked ? (
-              <Pressable style={styles.lockRow} onPress={() => router.push('/learn/paywall')}>
+              <Pressable
+                style={styles.lockRow}
+                onPress={() => router.push(`/learn/paywall?reason=${level.id}`)}
+              >
                 <Text style={styles.lockRowText}>🔒 Unlock this level</Text>
               </Pressable>
             ) : (

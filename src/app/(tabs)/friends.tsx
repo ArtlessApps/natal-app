@@ -95,9 +95,14 @@ export default function FriendsScreen() {
                   <Text style={styles.inviteBtnText}>✦  Invite someone to compare</Text>
                 </Pressable>
                 {atLimit ? (
-                  <Text style={styles.limitNote}>
-                    You’ve reached the free limit of {FREE_FRIEND_LIMIT} friends. Remove one to invite more.
-                  </Text>
+                  <View>
+                    <Text style={styles.limitNote}>
+                      You’ve reached the free limit of {FREE_FRIEND_LIMIT} friends. Remove one to invite more, or:
+                    </Text>
+                    <Pressable onPress={() => router.push('/learn/paywall?reason=friends')}>
+                      <Text style={styles.limitLink}>Unlock more with Premium →</Text>
+                    </Pressable>
+                  </View>
                 ) : (
                   <Pressable onPress={() => router.push('/friends/add')}>
                     <Text style={styles.manualLink}>Add their details manually</Text>
@@ -175,6 +180,7 @@ const styles = StyleSheet.create({
   inviteBtnText: { color: colors.bg, fontWeight: '700', fontSize: 16 },
   manualLink: { color: colors.accent, fontSize: 14, textAlign: 'center', marginTop: 12 },
   limitNote: { color: colors.muted, fontSize: 13, textAlign: 'center', marginTop: 10 },
+  limitLink: { color: colors.accent, fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 8 },
   sectionLabel: { color: colors.muted, fontSize: 12, letterSpacing: 2, marginTop: 24, marginBottom: 4 },
   pendingRow: {
     flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
