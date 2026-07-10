@@ -48,13 +48,17 @@ export default function RootLayout() {
   // Top-level stack screens (outside the tab group) that a signed-in,
   // onboarded user is allowed to be on without getting bounced back to
   // the tabs — add new ones here as they're built (e.g. journal/[id]).
-  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends'];
+  // 'invite' is the public guest page (Step 8.6): a signed-in user opening
+  // their own link must not be bounced to the tabs.
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
     const onAllowedStackScreen = ALLOWED_STACK_SEGMENTS.includes(segments[0] ?? '');
 
-    if (!session && segments[0] !== 'sign-in') {
+    if (!session && segments[0] !== 'sign-in' && segments[0] !== 'invite') {
+      // Guests hitting an /invite/<token> link are logged out by design —
+      // don't bounce them to sign-in (Step 8.6D).
       router.replace('/sign-in');
     } else if (session && hasProfile === false && segments[0] !== 'onboarding' && segments[0] !== 'reveal') {
       router.replace('/onboarding');
@@ -109,6 +113,7 @@ export default function RootLayout() {
         <Stack.Screen name="learn/paywall" />
         <Stack.Screen name="friends/add" />
         <Stack.Screen name="friends/[id]" />
+        <Stack.Screen name="invite/[token]" />
       </Stack>
     </>
   );

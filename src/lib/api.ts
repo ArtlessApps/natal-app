@@ -54,6 +54,43 @@ export async function fetchDaily(birth: BirthData, targetDate: string) {
 
 export type Big3 = { sun: string; moon: string; rising: string };
 
+// --- Friend invites (Step 8.6) --------------------------------------------
+// These two routes are token-authenticated (the token IS the credential) and
+// take no Supabase JWT — the guest has no account.
+
+export type InviteInfo = {
+  inviter_name: string;
+  status: 'pending' | 'complete';
+};
+
+// Landing-page lookup. Returns null on 404 so the screen can show the graceful
+// "isn't active" state; other failures throw for the generic error state.
+export async function fetchInviteInfo(token: string): Promise<InviteInfo | null> {
+  const res = await fetch(`${API_URL}/invite/${token}`);
+  if (res.status === 404) return null;
+  if (!res.ok) throw new Error(`Couldn’t load this invite (${res.status})`);
+  return res.json() as Promise<InviteInfo>;
+}
+
+export type InviteSubmitResult = {
+  big3: Big3;
+  inviter_name: string;
+};
+
+// Guest submits their own birth data; the API computes their chart, completes
+// the row, and pushes the owner. 409 means the token was already used.
+export async function submitInvite(token: string, birth: BirthData): Promise<InviteSubmitResult> {
+  const res = await fetch(`${API_URL}/invite/${token}/submit`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(birth),
+  });
+  if (res.status === 409) throw new Error('This invite was already used.');
+  if (res.status === 404) throw new Error('This invite link isn’t active.');
+  if (!res.ok) throw new Error(`Couldn’t cast your chart (${res.status})`);
+  return res.json() as Promise<InviteSubmitResult>;
+}
+
 export type CompatInsight = {
   title: string;
   aspect: string | null;   // conjunction/sextile/square/trine/opposition, or null

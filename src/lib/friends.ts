@@ -52,6 +52,20 @@ export async function addFriend(f: NewFriend): Promise<Friend> {
   return data as Friend;
 }
 
+// Create a pending invite row. Postgres generates the token (migration 0005);
+// .select().single() returns it so the caller can build the link.
+export async function createInvite(): Promise<Friend> {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) throw new Error('Not signed in');
+  const { data, error } = await supabase
+    .from('friends')
+    .insert({ owner_id: user.id, status: 'pending', source: 'invite' })
+    .select()
+    .single();
+  if (error) throw error;
+  return data as Friend;
+}
+
 export async function deleteFriend(id: string): Promise<void> {
   const { error } = await supabase.from('friends').delete().eq('id', id);
   if (error) throw error;

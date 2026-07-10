@@ -21,11 +21,15 @@ export default function BirthDataForm({
   busy,
   error,
   onSubmit,
+  namePlaceholder = 'Their name',
 }: {
   submitLabel: string;
   busy: boolean;
   error?: string;
   onSubmit: (values: BirthDataValues) => void;
+  // "Their name" for the owner adding a friend; "Your name" on the guest
+  // invite page, where the person is entering their own details.
+  namePlaceholder?: string;
 }) {
   const [name, setName] = useState('');
   const [date, setDate] = useState('');
@@ -69,7 +73,7 @@ export default function BirthDataForm({
     <View>
       <Text style={styles.label}>Name</Text>
       <TextInput style={styles.input} value={name} onChangeText={setName}
-        placeholder="Their name" placeholderTextColor={colors.muted} />
+        placeholder={namePlaceholder} placeholderTextColor={colors.muted} />
 
       <Text style={styles.label}>Birth date</Text>
       <TextInput style={styles.input} value={date} onChangeText={setDate}

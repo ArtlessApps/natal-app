@@ -29,7 +29,10 @@ export default function FriendComparison() {
       try {
         const [f, owner] = await Promise.all([getFriend(id), getOwnerCompareData()]);
         if (!active) return;
-        if (!f) { setError('Friend not found.'); return; }
+        // A pending invite has no chart yet — treat it like a missing row.
+        if (!f || f.status === 'pending' || !f.guest_chart_json || !f.guest_name) {
+          setError('Friend not found.'); return;
+        }
         setFriend(f);
         if (owner) {
           setOwnerName(owner.name);
@@ -53,7 +56,7 @@ export default function FriendComparison() {
   async function share() {
     if (!compat || !friend) return;
     const lines = [
-      `${ownerName} & ${friend.guest_name} — our charts, compared on Natal`,
+      `${ownerName} & ${friend.guest_name ?? 'Friend'} — our charts, compared on Natal`,
       '',
       ...compat.insights.map((i) => `${i.title}: ${i.body}`),
     ];
@@ -102,15 +105,19 @@ export default function FriendComparison() {
     );
   }
 
+  // Guaranteed present here (pending/chartless rows bail out above), but the
+  // type is nullable since Step 8.6 — fall back defensively for the compiler.
+  const guestName = friend.guest_name ?? 'Friend';
+
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
       <Pressable onPress={goBack}><Text style={styles.back}>← Friends</Text></Pressable>
-      <Text style={styles.title}>{ownerName} & {friend.guest_name}</Text>
+      <Text style={styles.title}>{ownerName} & {guestName}</Text>
 
       <Big3CompareCard
         nameA={ownerName}
         big3A={compat?.big3_a ?? null}
-        nameB={friend.guest_name}
+        nameB={guestName}
         big3B={compat?.big3_b ?? friend.guest_chart_json?.big3 ?? null}
       />
 
@@ -142,7 +149,7 @@ export default function FriendComparison() {
 
       {confirmingDelete ? (
         <View style={styles.confirm}>
-          <Text style={styles.confirmText}>Remove {friend.guest_name}?</Text>
+          <Text style={styles.confirmText}>Remove {guestName}?</Text>
           <View style={styles.confirmRow}>
             <Pressable style={styles.dangerBtn} onPress={remove} disabled={busy}>
               <Text style={styles.dangerText}>{busy ? 'Removing…' : 'Yes, remove'}</Text>

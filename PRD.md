@@ -76,10 +76,11 @@ Natal is a mobile astrology app built on the "Proven, Better, New" framework:
 - Free tier: Levels 1–2. Paid: Levels 3–5 (paywall stub in MVP; purchases wired in Phase 2 with RevenueCat).
 
 ### 4.5 Friends (tab)
-- Add friend via share link. Recipient enters birth data (guest chart, no account required).
+- **Primary flow — invite link with a staged web reveal (Step 8.6):** owner taps Invite → a pending `friends` row + DB token → share sheet with `/invite/<token>`. The guest opens the link (no account) and moves through landing → their own birth form → **their own Big 3** (the gift) → a locked comparison + store gate. On completion the owner gets the "compatibility is ready" push. Gift before gate: the guest's personal Big 3 is unconditional; only the comparison is locked.
+- **Secondary flow — manual entry:** the owner types the friend's birth details themselves (`/friends/add`).
 - Comparison view: side-by-side Big 3 + 3–4 compatibility insights (server-computed synastry-lite: Sun–Sun, Moon–Moon, Venus–Mars aspects using existing aspect code).
 - Shareable image card (Big 3 comparison) for social distribution.
-- Free tier: 3 friends. MVP cap: friends list max 20.
+- Free tier: 3 friends. MVP cap: friends list max 20. **Pending invites count toward the cap** (otherwise the cap is meaningless); deleting a stale pending frees a slot.
 
 ### 4.6 My Chart (tab)
 - Chart wheel (MVP: a clean placement LIST grouped by planet with sign/house/degree is acceptable; wheel graphic is Phase 2).
@@ -89,6 +90,7 @@ Natal is a mobile astrology app built on the "Proven, Better, New" framework:
 - One per user per day, ~08:00 local time.
 - Text = Today headline. Deep-links to Today tab.
 - Tone rule (hard requirement): direct and specific, never doom-flavored. Banned vibes: fatalism, "you are avoiding something"-style vague accusations, anything that reads as a horoscope-shaped insult.
+- **Compatibility-ready push (Step 8.6):** when a guest completes an invite, the owner gets "Your compatibility is ready — {guest} just added their chart. See how your skies fit." with `data.url = /friends/<id>`, routed by the existing notification listener. Same voice rule as the daily push.
 
 ---
 
@@ -116,6 +118,15 @@ GET /daily?user_id&date=YYYY-MM-DD
 POST /compat
   body: { chart_id_a, chart_id_b }
   → { big3_a, big3_b, insights: [ {title, body} ] }
+
+GET /invite/{token}                       (Step 8.6; token-authenticated, no user auth)
+  → { inviter_name, status: "pending"|"complete" }   404 if the token is unknown
+
+POST /invite/{token}/submit               (Step 8.6; token-authenticated, no user auth)
+  body: { name, date, time|null, lat, lng }   (same shape as /natal)
+  → { big3, inviter_name }                    404 unknown · 409 already complete
+  (computes the guest chart, completes the friends row via the service key,
+   and sends the owner the "compatibility is ready" push)
 ```
 
 All endpoints JSON, auth via Supabase JWT (Authorization: Bearer). Errors: `{ error: { code, message } }`.
@@ -140,7 +151,12 @@ journal_entries (id, user_id, entry_date, text, transit_planet, natal_planet,
                -- headline/body: snapshot of that day's reading text at save
                --   time, so later edits to content_* tables don't rewrite
                --   what the user actually saw/answered (shown in entry detail).
-friends       (id, owner_id, guest_name, guest_chart_json jsonb, created_at)
+friends       (id, owner_id, guest_name, guest_chart_json jsonb, created_at,
+               token, status, source)
+               -- Step 8.6: guest_name / guest_chart_json are now NULLABLE — a
+               --   'pending' invite row has no chart until the guest completes
+               --   the web flow. token: DB-generated, the invite link's secret.
+               --   status: 'pending'|'complete'. source: 'manual'|'invite'.
 learn_progress (user_id, lesson_id, completed_at)
 ```
 
@@ -176,11 +192,12 @@ Row Level Security ON for all tables: users can only read/write their own rows.
 - **natal-api `.env` still uses the publishable/anon key as `SUPABASE_SERVICE_KEY`.** The cron updates `last_push_date` / clears dead tokens with the service client; if RLS blocks those writes, swap in the real service-role key from the Supabase dashboard (Project Settings → API). Don't commit it.
 - **`supabase/migrations/0003_learn.sql` (Learn: `learn_progress` table + `content_natal` read RLS) isn't applied automatically** — same unlinked-CLI issue as 0001/0002, paste it into the Dashboard SQL editor (safe to re-run). It enables RLS on `content_natal` with a read-only policy for `authenticated`; if any anon-key reader ever needs it, widen the policy to `anon` too. The natal-api engine uses the service key and bypasses RLS, so `/daily` is unaffected.
 - **Level 2 "Your Planets" ships 8 lessons (Mercury…Pluto), not the PRD §4.4 "7 lessons".** Chosen so every planet placement is covered and "% of your chart you can read" can reach 100% — leaving Pluto permanently unreadable in the free tier felt wrong. To match the literal spec, delete the `planet-pluto` entry from `src/constants/lessons.ts` (catalog is plain data, one-line change).
-- **Friends "add" is owner-entered, not the PRD §4.5 "share link → recipient enters birth data (no account)" flow.** The owner types the friend's birth details themselves. The link-based guest flow needs (a) a publicly hosted guest-entry page (there's no deployed web URL yet — links would point at localhost) and (b) an unauthenticated write path, since `friends` RLS only lets the owner insert their own rows — a guest with no account can't. The clean fix is a service-key `POST /friends/guest` on natal-api (like the cron) that inserts the row on the guest's behalf, plus a hosted `/guest?to=<owner_id>` screen. Deferred until the web app is hosted; owner-entry covers the comparison + share-card payoff in the meantime.
+- ~~**Friends "add" is owner-entered, not the PRD §4.5 "share link → recipient enters birth data (no account)" flow.**~~ **SUPERSEDED by Step 8.6.** The token-based invite link + staged web reveal is now built: pending `friends` rows carry a DB token, the guest completes an unauthenticated write via natal-api's service-key `POST /invite/{token}/submit`, and the guest page (`src/app/invite/[token].tsx`) runs on web. The only remaining dependency — a deployed web URL for the links — moves to Build Phase 10 (see the `EXPO_PUBLIC_WEB_URL` item below).
 - **`POST /compat` takes the two `chart_json` objects, not `{chart_id_a, chart_id_b}` per PRD §6.** Same reason as `/daily`: the API has no server-side chart store, and the app already holds both charts (owner profile + friend `guest_chart_json`). Revisit if/when charts get persisted server-side. Synastry orb is a fixed 8° and insight copy is templated per (pairing, aspect) in `natal-api/compat.py` — move to a content table if it should be editable without a deploy.
 - **Friends "Share this card" shares text via the OS share sheet, not a rendered PNG.** PRD §4.5 wants a shareable *image* card; the visual (`Big3CompareCard`) is built and on-screen, but programmatic capture needs `react-native-view-shot` + `expo-sharing` and a dev-client rebuild (native module, won't work in Expo Go / web capture). Wire those in when doing the EAS build (Build Phase 10). Web uses `navigator.share`, falling back to clipboard.
 - **`supabase/migrations/0004_friends.sql` (friends table + RLS) isn't applied automatically** — same unlinked-CLI issue as 0001–0003; paste it into the Dashboard SQL editor (safe to re-run).
 - **Free-tier friend cap (3) is enforced but there's no upsell/paywall path** — at the limit the "Add a friend" button is disabled with a note. Wire it to the paywall stub once premium (RevenueCat) exists; the hard `MAX_FRIENDS = 20` ceiling in `lib/friends.ts` isn't separately enforced yet since the free cap is lower.
+- **Invite links point at `EXPO_PUBLIC_WEB_URL` (Step 8.6), which defaults to `http://localhost:8081` until the web build is deployed.** `src/constants/links.ts` also holds `APP_STORE_URL` (empty) and `TESTFLIGHT_MODE` (true → the guest's locked screen shows early-access copy instead of a dead store link). Build Phase 10: set the real deployed web URL, fill `APP_STORE_URL`, and flip `TESTFLIGHT_MODE` to false. Also apply `supabase/migrations/0005_friend_invites.sql` in the Dashboard SQL editor (same unlinked-CLI issue as 0001–0004) and add the two `/invite/{token}` routes to the deployed natal-api.
 - **Rising lesson maps to `content_natal` rows keyed `planet='Ascendant'`, `house=1`** — matching the reference `journal_generator.py` (`get_natal_content(client, "Ascendant", asc_sign, 1)`), so those rows exist. Any placement with no matching `content_natal` row (a gap in the table) degrades gracefully to the planet-agnostic intro + a "deeper reading coming soon" line rather than erroring.
 
 ---
@@ -528,6 +545,30 @@ shareButtonText: { color: colors.accent, fontWeight: '600', fontSize: 15 },
 - Compare links → count link_sent / guest_chart_completed / guest_signup
 
 Whichever converts, feed it. If Big 3 cards dominate, add more card variants (journal-streak card, Echo card). If compare links convert better, make "Compare with someone" more prominent on Today.
+
+---
+
+## 8.6 — Invite Links, Staged Reveal & Friends Tab Redesign (Cursor-Ready)
+
+**Goal:** turn Friends into a growth loop. The owner sends a link; the guest gets their *own* Big 3 as the gift and hits a gate on the *comparison*; the owner gets a push and lands on the comparison. Supersedes the §8a "share-link flow" debt item.
+
+**The loop:**
+1. Owner taps **Invite** → a `friends` row is created with `status='pending'` and a DB-generated `token` → native share sheet with the link.
+2. Guest opens `/invite/<token>` on the web: "✦ [Name] wants to compare charts with you."
+3. Guest enters their own birth data (reusing `birth-data-form`) → **sees their own Big 3** (the gift).
+4. Gate: "Your compatibility with [Name] is ready" (TestFlight-safe copy behind `TESTFLIGHT_MODE`).
+5. Owner gets a push → taps → lands on `/friends/<id>` via the existing `data.url` deep-link handler.
+
+**Why a token, not `?to=<owner_id>`:** a token is per-invite, so pending/complete status, "already used" handling, and nothing guessable in the URL. One invite = one row = one link. **No new native modules** — link sharing uses RN's built-in `Share`; the token comes from Postgres. Works in the current dev client and on web (no rebuild).
+
+**What shipped:**
+- **`supabase/migrations/0005_friend_invites.sql`** — drops NOT NULL on `guest_name`/`guest_chart_json`; adds `token` (unique, `gen_random_uuid()` default), `status` ('pending'|'complete'), `source` ('manual'|'invite'). No RLS changes (owner inserts pending rows; the guest never touches Supabase).
+- **natal-api** — `GET /invite/{token}` and `POST /invite/{token}/submit` (token-authenticated, no user auth), reusing `make_subject` + `serialize_chart` and the `/cron/daily-push` sender. Submit completes the row and pushes the owner.
+- **App types + data:** `src/types/friend.ts` made pending-aware (nullable `guest_name`/`guest_chart_json`); `createInvite()` in `src/lib/friends.ts`; `fetchInviteInfo` / `submitInvite` in `src/lib/api.ts`; `src/constants/links.ts` (`WEB_URL`, `APP_STORE_URL`, `TESTFLIGHT_MODE`).
+- **Guest page** `src/app/invite/[token].tsx` — four-phase state machine (`landing → form → reveal → locked`), plus root-layout guard exemptions (`!session` branch skips `invite`; `invite` added to `ALLOWED_STACK_SEGMENTS`; `<Stack.Screen name="invite/[token]" />`). Big 3 cards extracted to shared `src/components/big3-cards.tsx` (reused by `reveal.tsx`).
+- **Friends tab redesign** `src/app/(tabs)/friends.tsx` — primary "✦ Invite someone to compare" CTA + quiet "Add their details manually" link; a WAITING section (pending rows, Resend + delete) above the existing COMPARED rows; pending + complete both count toward `FREE_FRIEND_LIMIT`.
+
+**Design rule enforced:** gift before gate. The guest's own Big 3 is unconditional; only the *comparison* is locked.
 
 ---
 
