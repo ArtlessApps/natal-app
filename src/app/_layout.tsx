@@ -48,7 +48,7 @@ export default function RootLayout() {
   // Top-level stack screens (outside the tab group) that a signed-in,
   // onboarded user is allowed to be on without getting bounced back to
   // the tabs — add new ones here as they're built (e.g. journal/[id]).
-  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn'];
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
@@ -107,6 +107,8 @@ export default function RootLayout() {
         <Stack.Screen name="journal/[id]" />
         <Stack.Screen name="learn/[id]" />
         <Stack.Screen name="learn/paywall" />
+        <Stack.Screen name="friends/add" />
+        <Stack.Screen name="friends/[id]" />
       </Stack>
     </>
   );

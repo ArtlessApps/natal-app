@@ -51,3 +51,36 @@ export async function fetchDaily(birth: BirthData, targetDate: string) {
   if (!res.ok) throw new Error(`Daily reading failed (${res.status})`);
   return res.json() as Promise<DailyReading>;
 }
+
+export type Big3 = { sun: string; moon: string; rising: string };
+
+export type CompatInsight = {
+  title: string;
+  aspect: string | null;   // conjunction/sextile/square/trine/opposition, or null
+  orb?: number;
+  body: string;
+};
+
+export type CompatResult = {
+  big3_a: Big3 | null;
+  big3_b: Big3 | null;
+  insights: CompatInsight[];
+};
+
+// Synastry-lite comparison (PRD §4.5). Passes the two chart_json objects the
+// app already has (owner profile + friend guest chart) since the API has no
+// server-side chart store — same tradeoff as /daily.
+export async function fetchCompat(
+  chartA: unknown,
+  chartB: unknown,
+  nameA: string,
+  nameB: string,
+) {
+  const res = await fetch(`${API_URL}/compat`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chart_a: chartA, chart_b: chartB, name_a: nameA, name_b: nameB }),
+  });
+  if (!res.ok) throw new Error(`Comparison failed (${res.status})`);
+  return res.json() as Promise<CompatResult>;
+}
