@@ -1,0 +1,6 @@
+venv/
+.env
+__pycache__/
+
+# Supabase CLI local cache / linked-project state
+supabase/.temp/

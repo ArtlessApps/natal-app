@@ -8,8 +8,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is Natal, an Expo/React Native astrology app, currently at the bare-skeleton stage (Expo template reset, no feature code yet). **`PRD.md` is the authoritative product and architecture spec** — read it before planning any feature work. It defines the target architecture, screens, data model, API contract, voice/tone rules, build order, and explicit non-goals. Notably:
 
-- Planned architecture: Expo/RN app → FastAPI service (Python, wraps an existing Kerykeion-based astrology engine) → Supabase (Postgres + Auth). None of the backend exists in this repo yet.
-- Do not reimplement chart/transit calculation logic in JS — it's meant to be reused from the existing Python engine via the FastAPI layer.
+- Architecture: Expo/RN app → FastAPI service (Python, wraps a Kerykeion-based astrology engine) → Supabase (Postgres + Auth). The backend now lives in this repo under `natal-api/` (monorepo): `main.py` (routes), `engine.py` (astrology + Supabase service client), `compat.py` (synastry-lite), `push.py` (Expo Push). Its `.env` and `venv/` are gitignored; run it with `cd natal-api && ./venv/bin/uvicorn main:app --reload` (the app's `EXPO_PUBLIC_API_URL` points at `http://127.0.0.1:8000`).
+- Do not reimplement chart/transit calculation logic in JS — it's reused from the Python engine in `natal-api/` via the FastAPI layer.
 - PRD §9 lists explicit non-goals (e.g. no Android in MVP, no synastry wheels, no LLM-generated readings) — decline to add these unless the user overrides the PRD.
 - PRD §11 has engineering conventions for this codebase (component size, theming via a single `constants/theme.ts`, `lib/api.ts` / `lib/supabase.ts` split, etc.) that don't fully exist yet since the app is still a skeleton — follow them as directories/features are added.
 
