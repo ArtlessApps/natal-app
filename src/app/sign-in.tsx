@@ -1,4 +1,4 @@
-// Two-phase screen: enter email → we send a 6-digit code → enter code.
+// Two-phase screen: enter email → we send an OTP code → enter code.
 import { useState } from 'react';
 import { View, Text, TextInput, Pressable, StyleSheet } from 'react-native';
 import { supabase } from '@/lib/supabase';
@@ -19,7 +19,7 @@ export default function SignIn() {
       options: { shouldCreateUser: true },
     });
     setBusy(false);
-    if (error) setError(error.message);
+    if (error) setError(error.message || 'Something went wrong sending the code — try again.');
     else setPhase('code');
   }
 
@@ -57,17 +57,18 @@ export default function SignIn() {
         </>
       ) : (
         <>
-          <Text style={styles.hint}>We emailed a 6-digit code to {email}</Text>
+          <Text style={styles.hint}>We emailed a code to {email}</Text>
           <TextInput
             style={styles.input}
             placeholder="123456"
             placeholderTextColor={colors.muted}
             keyboardType="number-pad"
-            maxLength={6}
+            maxLength={10}
             value={code}
             onChangeText={setCode}
           />
-          <Pressable style={styles.button} onPress={verifyCode} disabled={busy || code.length !== 6}>
+          {/* Supabase's configured OTP length varies by project (this one issues 8 digits), so accept any reasonable length rather than hardcoding one. */}
+          <Pressable style={styles.button} onPress={verifyCode} disabled={busy || code.length < 6}>
             <Text style={styles.buttonText}>{busy ? 'Checking…' : 'Sign in'}</Text>
           </Pressable>
           <Pressable onPress={() => setPhase('email')}>
