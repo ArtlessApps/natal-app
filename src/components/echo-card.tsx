@@ -26,8 +26,11 @@ export default function EchoCard({ userId, entryDate, driver }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    // No setLoading(true) here: the initial `useState(true)` already covers
+    // the mount case, and this card's props are effectively set once per
+    // Today-tab session (they don't change again until the next day/reload),
+    // so re-arming the spinner on a later re-run isn't needed in practice.
     let cancelled = false;
-    setLoading(true);
     findEcho(userId, entryDate, driver).then((result) => {
       if (cancelled) return;
       setMatch(result);

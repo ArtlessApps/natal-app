@@ -62,7 +62,8 @@ export default function TodayScreen() {
             lat: profile.lat,
             lng: profile.lng,
           },
-          date
+          date,
+          user.id
         );
         if (!cancelled) setReading(daily);
       } catch (e: any) {

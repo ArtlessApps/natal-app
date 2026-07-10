@@ -1,5 +1,9 @@
 // Side-by-side Big 3 comparison card (PRD §4.5). Doubles as the visual for
-// the shareable card. Kept presentational so it can be captured/screenshotted.
+// the shareable card. Kept presentational so it can be captured/screenshotted
+// — forwardRef + collapsable={false} so useShareCard() can hand it straight
+// to view-shot without an off-screen clone (this card isn't 9:16 like
+// ShareCard, so it's captured at its own natural size — see useShareCard).
+import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
 import { colors } from '@/constants/theme';
 import { expandSign } from '@/constants/astro';
@@ -11,16 +15,16 @@ const ROWS: { key: keyof Big3; glyph: string; label: string }[] = [
   { key: 'rising', glyph: '↑', label: 'Rising' },
 ];
 
-export default function Big3CompareCard({
-  nameA, big3A, nameB, big3B,
-}: {
+type Props = {
   nameA: string;
   big3A: Big3 | null;
   nameB: string;
   big3B: Big3 | null;
-}) {
+};
+
+const Big3CompareCard = forwardRef<View, Props>(({ nameA, big3A, nameB, big3B }, ref) => {
   return (
-    <View style={styles.card}>
+    <View ref={ref} collapsable={false} style={styles.card}>
       <View style={styles.headerRow}>
         <Text style={styles.name} numberOfLines={1}>{nameA}</Text>
         <Text style={styles.amp}>&</Text>
@@ -43,7 +47,9 @@ export default function Big3CompareCard({
       <Text style={styles.brand}>Natal</Text>
     </View>
   );
-}
+});
+
+Big3CompareCard.displayName = 'Big3CompareCard';
 
 const styles = StyleSheet.create({
   card: { backgroundColor: colors.surface, borderRadius: 20, padding: 22 },
@@ -57,3 +63,5 @@ const styles = StyleSheet.create({
   label: { color: colors.muted, fontSize: 11, marginTop: 2 },
   brand: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 16, letterSpacing: 2 },
 });
+
+export default Big3CompareCard;

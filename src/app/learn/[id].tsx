@@ -25,7 +25,10 @@ export default function LessonDetail() {
   const [error, setError] = useState('');
 
   useEffect(() => {
-    if (!found) { setLoading(false); return; }
+    // No setLoading(false) needed here: the "Lesson not found" render branch
+    // below checks `!found` before it ever checks `loading`, so it always
+    // short-circuits first regardless of loading's value.
+    if (!found) return;
     let active = true;
     (async () => {
       try {

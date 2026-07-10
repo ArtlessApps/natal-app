@@ -3,13 +3,14 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
-  ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, View,
+  ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, View,
 } from 'react-native';
 import { colors } from '@/constants/theme';
 import { ASPECT_GLYPHS } from '@/constants/astro';
 import { fetchCompat, type CompatResult } from '@/lib/api';
 import { deleteFriend, getFriend, getOwnerCompareData } from '@/lib/friends';
 import Big3CompareCard from '@/components/big3-compare-card';
+import { useShareCard } from '@/lib/use-share-card';
 import type { Friend } from '@/types/friend';
 
 export default function FriendComparison() {
@@ -22,6 +23,9 @@ export default function FriendComparison() {
   const [error, setError] = useState('');
   const [confirmingDelete, setConfirmingDelete] = useState(false);
   const [busy, setBusy] = useState(false);
+  // `null` size = capture the card at its own natural on-screen dimensions
+  // instead of forcing it into the 9:16 story format (see useShareCard).
+  const { cardRef, share: shareImage, sharing } = useShareCard(null);
 
   useEffect(() => {
     let active = true;
@@ -53,8 +57,15 @@ export default function FriendComparison() {
     else router.replace('/(tabs)/friends');
   }
 
+  // Native shares the rendered Big3CompareCard as a PNG (PRD §4.5). Web
+  // can't reliably capture-to-image (see useShareCard), so it keeps the
+  // original text share / clipboard fallback there.
   async function share() {
     if (!compat || !friend) return;
+    if (Platform.OS !== 'web') {
+      await shareImage();
+      return;
+    }
     const lines = [
       `${ownerName} & ${friend.guest_name ?? 'Friend'} — our charts, compared on Natal`,
       '',
@@ -62,13 +73,9 @@ export default function FriendComparison() {
     ];
     const message = lines.join('\n');
     try {
-      if (Platform.OS === 'web') {
-        const nav = globalThis.navigator as any;
-        if (nav?.share) await nav.share({ text: message });
-        else if (nav?.clipboard) { await nav.clipboard.writeText(message); setError('Copied to clipboard.'); }
-      } else {
-        await Share.share({ message });
-      }
+      const nav = globalThis.navigator as any;
+      if (nav?.share) await nav.share({ text: message });
+      else if (nav?.clipboard) { await nav.clipboard.writeText(message); setError('Copied to clipboard.'); }
     } catch {
       /* user cancelled share — no-op */
     }
@@ -115,14 +122,15 @@ export default function FriendComparison() {
       <Text style={styles.title}>{ownerName} & {guestName}</Text>
 
       <Big3CompareCard
+        ref={cardRef}
         nameA={ownerName}
         big3A={compat?.big3_a ?? null}
         nameB={guestName}
         big3B={compat?.big3_b ?? friend.guest_chart_json?.big3 ?? null}
       />
 
-      <Pressable style={styles.shareBtn} onPress={share}>
-        <Text style={styles.shareBtnText}>Share this card</Text>
+      <Pressable style={styles.shareBtn} onPress={share} disabled={sharing}>
+        <Text style={styles.shareBtnText}>{sharing ? 'Preparing…' : 'Share this card'}</Text>
       </Pressable>
 
       {compat ? (

@@ -53,7 +53,10 @@ function ChipRow<T extends string>({
   );
 }
 
-export default function JournalFilters({ filters, onChange }: Props) {
+// Named distinctly from the `JournalFilters` type above (same name for both
+// would collide across TS's type/value namespaces from lint's point of view —
+// see import/no-named-as-default + @typescript-eslint/no-redeclare).
+export default function JournalFilterBar({ filters, onChange }: Props) {
   const [expanded, setExpanded] = useState(false);
   const activeCount = Object.values(filters).filter(Boolean).length;
 

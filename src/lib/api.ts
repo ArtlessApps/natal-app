@@ -42,11 +42,14 @@ export type DailyReading = {
 
 // The API doesn't have user accounts of its own yet (Step 6 debt item), so
 // /daily takes the same birth data as /natal plus the date to compute.
-export async function fetchDaily(birth: BirthData, targetDate: string) {
+// userId is optional server-side but always sent here — it's what lets
+// compute_daily() persist/check per-user cooldowns in transit_cooldowns
+// (PRD §8a) instead of the same aspect firing every day.
+export async function fetchDaily(birth: BirthData, targetDate: string, userId: string) {
   const res = await fetch(`${API_URL}/daily`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ...birth, target_date: targetDate }),
+    body: JSON.stringify({ ...birth, target_date: targetDate, user_id: userId }),
   });
   if (!res.ok) throw new Error(`Daily reading failed (${res.status})`);
   return res.json() as Promise<DailyReading>;

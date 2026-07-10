@@ -11,7 +11,14 @@ import * as Sharing from 'expo-sharing';
 const TARGET_W = 1080;
 const TARGET_H = 1920;
 
-export function useShareCard() {
+// captureRef's width/height force a *resize* of the capture to those exact
+// pixels — great for the purpose-built 9:16 ShareCard component, but it'll
+// stretch/squash anything that isn't already laid out at that aspect ratio
+// (e.g. the on-screen Big3CompareCard). Pass `null` to capture a component
+// at its own natural size instead of forcing it into the story format.
+type CardSize = { width: number; height: number } | null;
+
+export function useShareCard(size: CardSize = { width: TARGET_W, height: TARGET_H }) {
   const cardRef = useRef<View>(null);
   const [sharing, setSharing] = useState(false);
 
@@ -28,8 +35,7 @@ export function useShareCard() {
         format: 'png',
         quality: 1,
         result: 'tmpfile',
-        width: TARGET_W / pr,
-        height: TARGET_H / pr,
+        ...(size ? { width: size.width / pr, height: size.height / pr } : null),
       });
       // Some simulators report false here — test the sheet on a real device.
       if (!(await Sharing.isAvailableAsync())) {

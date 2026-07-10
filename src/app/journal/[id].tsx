@@ -134,7 +134,7 @@ export default function JournalEntryDetail() {
 
       {(entry.headline || entry.body) && (
         <View style={styles.snapshot}>
-          <Text style={styles.snapshotLabel}>THAT DAY'S READING</Text>
+          <Text style={styles.snapshotLabel}>THAT DAY&apos;S READING</Text>
           {!!entry.headline && <Text style={styles.snapshotHeadline}>{entry.headline}</Text>}
           {!!entry.body && <Text style={styles.snapshotBody}>{entry.body}</Text>}
         </View>

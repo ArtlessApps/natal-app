@@ -95,11 +95,16 @@ def profiles_due_now(client) -> list[dict]:
     return due
 
 
-def compute_headline(row: dict) -> tuple[str, date]:
+def compute_headline(row: dict, client) -> tuple[str, date]:
     """
     Run the same /daily pipeline the app uses, returning (headline, local_date).
     Falls back to a short generic line if content lookup returns nothing —
     better a quiet push than a crash that skips the rest of the batch.
+
+    `client` is the cron's already-open Supabase client, reused here so
+    compute_daily()'s cooldown lookup/write doesn't open a second connection
+    per profile — and so the cron enforces the same per-user cooldowns as
+    the app's own /daily calls.
     """
     local = _local_now(row["tz_str"])
     assert local is not None  # filtered in profiles_due_now
@@ -118,7 +123,7 @@ def compute_headline(row: dict) -> tuple[str, date]:
         lng=float(row["lng"]),
         tz_str=row["tz_str"],
     )
-    driver = engine.compute_daily(subject, target)
+    driver = engine.compute_daily(subject, target, user_id=row["id"], client=client)
     content = engine.lookup_content(driver)
     headline = (content.get("headline") or "").strip() or "Your sky for today."
     # Expo push title/body should stay short; PRD caps headline at 90 chars.
@@ -209,7 +214,7 @@ def run_daily_push() -> dict:
 
     for row in due:
         try:
-            headline, local_date = compute_headline(row)
+            headline, local_date = compute_headline(row, client)
             token = row["push_token"]
             messages.append(build_message(token, headline))
             pending.append((row["id"], local_date, token))

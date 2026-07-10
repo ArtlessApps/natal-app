@@ -6,7 +6,7 @@ import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-nativ
 import { supabase } from '@/lib/supabase';
 import { colors } from '@/constants/theme';
 import JournalEntryRow from '@/components/journal-entry-row';
-import JournalFilters, { EMPTY_FILTERS, type JournalFilters as Filters } from '@/components/journal-filters';
+import JournalFilterBar, { EMPTY_FILTERS, type JournalFilters as Filters } from '@/components/journal-filters';
 import type { JournalEntry } from '@/types/journal';
 
 function matches(entry: JournalEntry, filters: Filters): boolean {
@@ -50,7 +50,7 @@ export default function JournalScreen() {
           <>
             <Text style={styles.title}>Journal</Text>
             <Text style={styles.privacy}>Your journal is never shared or sold.</Text>
-            <JournalFilters filters={filters} onChange={setFilters} />
+            <JournalFilterBar filters={filters} onChange={setFilters} />
           </>
         }
         renderItem={({ item }) => (

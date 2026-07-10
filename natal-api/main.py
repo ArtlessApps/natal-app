@@ -61,14 +61,18 @@ class CompatRequest(BaseModel):
 
 
 class DailyRequest(BaseModel):
-    # Same birth data (the app stores it and sends it back).
-    # Later we'll switch to a user_id lookup; this keeps Step 2 simple.
+    # Same birth data (the app stores it and sends it back) — see PRD debt
+    # re: switching /daily to a pure user_id lookup. user_id is optional
+    # (omitting it just disables cooldown tracking, same as before it
+    # existed) but the app always sends the signed-in user's id so
+    # transit_cooldowns has something to key on.
     name: str
     date: str
     time: str | None
     lat: float
     lng: float
     target_date: str   # the day to compute, "2026-07-07"
+    user_id: str | None = None
 
 
 # ---------- Helpers ----------
@@ -162,7 +166,7 @@ def daily(req: DailyRequest):
     subject = make_subject(req)
     target = date_type.fromisoformat(req.target_date)
 
-    driver = engine.compute_daily(subject, target)     # the astrology
+    driver = engine.compute_daily(subject, target, user_id=req.user_id)  # the astrology
     content = engine.lookup_content(driver)            # the words
 
     return {

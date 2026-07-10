@@ -73,7 +73,7 @@ export default function JournalPrompt({
 
   return (
     <View style={styles.wrap}>
-      <Text style={styles.label}>TODAY'S PROMPT</Text>
+      <Text style={styles.label}>TODAY&apos;S PROMPT</Text>
       <Text style={styles.prompt}>{prompt}</Text>
       {loading ? (
         <ActivityIndicator color={colors.accent} style={styles.spinner} />

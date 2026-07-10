@@ -85,7 +85,8 @@ TRANSIT_PLANETS = {
 
 # Planet-specific cooldowns (days before same aspect can trigger again).
 # Outer planets move slowly, so they need longer cooldowns to avoid repetition.
-# NOTE: not enforced yet in compute_daily() — see _passes_cooldown() below.
+# Enforced in compute_daily() via _passes_cooldown(), backed by the
+# transit_cooldowns table (supabase/migrations/0006_transit_cooldowns.sql).
 PLANET_COOLDOWNS = {
     "Moon": 3,  # Moon moves fast (~13°/day)
     "Sun": 14,  # Sun moves ~1°/day
@@ -321,30 +322,86 @@ def categorize_transit_intensity(transit_planet: str, natal_planet: str, aspect_
         return "RIPPLE"
 
 
-def _passes_cooldown(collision_key: str, target_date: date) -> bool:
+def _passes_cooldown(
+    client: Optional[Client],
+    user_id: Optional[str],
+    transit_planet: str,
+    collision_key: str,
+    target_date: date,
+) -> bool:
     """
-    TODO: the original generate_yearly_plan() tracks a per-key
-    cooldown_tracker across the whole 365-day loop so the same aspect can't
-    repeat too soon (thresholds in PLANET_COOLDOWNS above). A single /daily
-    request only ever sees one date, so there's no cross-day history to
-    check here yet. Once the API persists "last fired" dates per user
-    (e.g. alongside journal entries in Supabase), look that up here instead
-    of always returning True.
+    Mirrors the original generate_yearly_plan()'s cooldown_tracker, but reads
+    cross-day history from the transit_cooldowns table instead of an in-memory
+    dict, since a single /daily request only ever sees one date on its own.
+
+    No client/user_id (e.g. an anonymous or not-yet-authenticated caller) ->
+    no history to check, so everything passes, same as before this was wired
+    up. Once a user_id is present, look up when this collision_key last fired
+    for that user and compare against PLANET_COOLDOWNS.
     """
-    return True
+    if not client or not user_id:
+        return True
+
+    response = (
+        client.table("transit_cooldowns")
+        .select("last_fired_date")
+        .eq("user_id", user_id)
+        .eq("collision_key", collision_key)
+        .limit(1)
+        .execute()
+    )
+    rows = response.data or []
+    if not rows:
+        return True
+
+    last_fired = date.fromisoformat(rows[0]["last_fired_date"])
+    cooldown_days = PLANET_COOLDOWNS.get(transit_planet, 7)
+    return (target_date - last_fired).days >= cooldown_days
 
 
-def compute_daily(natal_subject, target_date: date) -> dict:
+def _record_fired(
+    client: Optional[Client], user_id: Optional[str], collision_key: str, target_date: date
+) -> None:
+    """Persist that collision_key fired today, so tomorrow's cooldown check sees it."""
+    if not client or not user_id:
+        return
+    client.table("transit_cooldowns").upsert(
+        {
+            "user_id": user_id,
+            "collision_key": collision_key,
+            "last_fired_date": target_date.isoformat(),
+        },
+        on_conflict="user_id,collision_key",
+    ).execute()
+
+
+def compute_daily(
+    natal_subject,
+    target_date: date,
+    user_id: Optional[str] = None,
+    client: Optional[Client] = None,
+) -> dict:
     """
     Run the single-day transit pipeline for one date: build the noon-UTC
     transit chart, filter aspects to transit-to-natal pairs within orb,
     pick the highest-priority one, classify its intensity, and fall back to
     the Walking spotlight when nothing qualifies.
 
+    user_id (when provided) enables real per-user cooldown tracking via the
+    transit_cooldowns table: a collision_key already fired within its
+    PLANET_COOLDOWNS window is skipped, and whichever collision wins today
+    gets its last_fired_date recorded for tomorrow's check. Without a
+    user_id, cooldowns can't be checked (see _passes_cooldown) and this
+    behaves as before. `client` lets callers that already hold a Supabase
+    client (e.g. the daily-push cron) reuse it instead of opening a new one.
+
     Returns:
         { "type", "transit_planet", "natal_planet", "aspect", "orb",
           "sign", "phase", "house" }
     """
+    if user_id and client is None:
+        client = create_supabase_client()
+
     transit_subject = build_transit_subject(natal_subject, target_date)
     transit_chart = ChartDataFactory.create_transit_chart_data(natal_subject, transit_subject)
 
@@ -382,7 +439,7 @@ def compute_daily(natal_subject, target_date: date) -> dict:
             continue  # Skip - aspect is too wide to be significant
 
         collision_key = f"{t_planet} {aspect_name} {n_planet}"
-        if not _passes_cooldown(collision_key, target_date):
+        if not _passes_cooldown(client, user_id, t_planet, collision_key, target_date):
             continue  # Still on cooldown
 
         aspect_data = (t_planet, n_planet, aspect_name, collision_key, orb_value)
@@ -409,7 +466,8 @@ def compute_daily(natal_subject, target_date: date) -> dict:
         valid_collision = minor_aspects[0]
 
     if valid_collision:
-        t_planet, n_planet, aspect_name, _key, orb_val = valid_collision
+        t_planet, n_planet, aspect_name, collision_key, orb_val = valid_collision
+        _record_fired(client, user_id, collision_key, target_date)
         intensity_tag = categorize_transit_intensity(t_planet, n_planet, aspect_name)
 
         t_planet_obj = getattr(transit_subject, t_planet.lower(), None)

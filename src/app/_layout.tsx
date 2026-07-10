@@ -15,15 +15,21 @@ export default function RootLayout() {
   const router = useRouter();
   const segments = useSegments(); // which screen group we're currently in
 
-  // 1) Learn the login state, and keep listening for changes
+  // 1) Learn the login state, and keep listening for changes. Also resets
+  // hasProfile the moment session goes away (right here, inside the same
+  // callback that clears it) rather than in a separate effect reacting to
+  // `session` — otherwise a stale hasProfile=true from a previous signed-in
+  // user could survive into the next sign-in and skip effect 2's check.
   useEffect(() => {
     supabase.auth.getSession().then(({ data }) => {
       setSession(data.session);
+      if (!data.session) setHasProfile(null);
       setLoading(false);
     });
     // Fires on sign-in, sign-out, token refresh — keeps state in sync.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
+      if (!s) setHasProfile(null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);
@@ -33,7 +39,7 @@ export default function RootLayout() {
   // profile row onboarding just created — otherwise a stale `false` from
   // right after sign-in bounces the "See today's sky" tap back to onboarding.
   useEffect(() => {
-    if (!session) { setHasProfile(null); return; }
+    if (!session) return; // reset already handled in effect 1, where session is cleared
     if (hasProfile === true) return; // already confirmed, nothing left to check
     supabase
       .from('profiles')
