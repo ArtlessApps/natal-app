@@ -11,6 +11,25 @@ export const ASPECT_GLYPHS: Record<string, string> = {
   conjunction: '☌', sextile: '⚹', square: '□', trine: '△', opposition: '☍',
 };
 
+// Zodiac sign glyphs, keyed by the abbreviations chart_json uses (see
+// SIGN_NAMES below) — used by the chart wheel's outer ring.
+export const SIGN_GLYPHS: Record<string, string> = {
+  Ari: '♈', Tau: '♉', Gem: '♊', Can: '♋', Leo: '♌', Vir: '♍',
+  Lib: '♎', Sco: '♏', Sag: '♐', Cap: '♑', Aqu: '♒', Pis: '♓',
+};
+
+// Aspect line color on the chart wheel: harmonious angles read as the
+// app's accent, tense angles as the app's (already-soft) error red,
+// conjunctions as neutral — echoes the accent/error split used everywhere
+// else in the app rather than inventing a new palette just for the wheel.
+export const ASPECT_LINE_COLORS: Record<string, string> = {
+  conjunction: colors.muted,
+  sextile: colors.accent,
+  trine: colors.accent,
+  square: colors.error,
+  opposition: colors.error,
+};
+
 // One-paragraph, planet-agnostic explanation of what each aspect type does.
 // Keeps the "Why?" disclosure honest without needing new content-table rows.
 export const ASPECT_LESSONS: Record<string, string> = {
@@ -38,6 +57,23 @@ export const SIGN_NAMES: Record<string, string> = {
 };
 
 export const expandSign = (abbr: string): string => SIGN_NAMES[abbr] ?? abbr;
+
+// One-line, planet-agnostic "what this sign is about" — shown when tapping
+// a sign wedge on the chart wheel. Keyed by full name (post-expandSign).
+export const SIGN_BLURBS: Record<string, string> = {
+  Aries: 'Cardinal fire — the initiator. Bold, direct, quick to act on instinct.',
+  Taurus: 'Fixed earth — the builder. Steady, sensory, slow to move and slower to let go.',
+  Gemini: 'Mutable air — the messenger. Curious, quick-witted, drawn to variety and talk.',
+  Cancer: 'Cardinal water — the nurturer. Protective, intuitive, led by feeling and memory.',
+  Leo: 'Fixed fire — the performer. Warm, expressive, wants to be seen and to shine.',
+  Virgo: 'Mutable earth — the analyst. Precise, useful, always refining what could be better.',
+  Libra: 'Cardinal air — the diplomat. Relational, fair-minded, seeks balance and beauty.',
+  Scorpio: 'Fixed water — the alchemist. Intense, private, drawn to what lies beneath the surface.',
+  Sagittarius: 'Mutable fire — the explorer. Optimistic, philosophical, needs room to roam.',
+  Capricorn: 'Cardinal earth — the strategist. Disciplined, ambitious, plays the long game.',
+  Aquarius: 'Fixed air — the innovator. Independent, idea-driven, allergic to convention.',
+  Pisces: 'Mutable water — the dreamer. Empathic, imaginative, dissolves boundaries easily.',
+};
 
 // chart_json stores houses as "Tenth_House"; content_natal.house is an int 1–12.
 const HOUSE_NUMBERS: Record<string, number> = {

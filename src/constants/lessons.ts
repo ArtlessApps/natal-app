@@ -113,3 +113,11 @@ export const findLesson = (id: string): { lesson: Lesson; level: Level } | null 
   }
   return null;
 };
+
+// planetKey (e.g. "Sun", "Ascendant") → lesson id, for screens (My Chart)
+// that need to link a raw placement straight to its Learn lesson.
+const LESSON_ID_BY_PLANET_KEY: Record<string, string> = Object.fromEntries(
+  ALL_UNLOCKABLE_LESSONS.map((l) => [l.planetKey.toLowerCase(), l.id]),
+);
+export const lessonIdForPlanetKey = (planetKey: string): string | null =>
+  LESSON_ID_BY_PLANET_KEY[planetKey.toLowerCase()] ?? null;

@@ -23,6 +23,7 @@ export type Chart = {
 export type Placementish = {
   signAbbr: string;
   signFull: string;
+  degree: number | null; // degrees into the sign, 0-30 (My Chart only; Ascendant has none)
   house: number | null;
   retrograde: boolean;
   // Rising is approximate when birth time is unknown (house math needs it).
@@ -53,6 +54,7 @@ export function resolvePlacement(
     return {
       signAbbr: chart.big3.rising,
       signFull: expandSign(chart.big3.rising),
+      degree: null, // not returned by /natal's big3 block
       house: 1,
       retrograde: false,
       approximate: !birthTimeKnown,
@@ -65,6 +67,7 @@ export function resolvePlacement(
   return {
     signAbbr: p.sign,
     signFull: expandSign(p.sign),
+    degree: p.position,
     house: houseNumber(p.house),
     retrograde: p.retrograde,
     // Houses depend on birth time; sign of a planet doesn't, so only the
