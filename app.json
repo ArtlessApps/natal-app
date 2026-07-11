@@ -33,7 +33,7 @@
       [
         "expo-splash-screen",
         {
-          "backgroundColor": "#208AEF",
+          "backgroundColor": "#faf7f2",
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
@@ -41,11 +41,12 @@
       [
         "expo-notifications",
         {
-          "color": "#B8A9E8",
+          "color": "#4a6e8a",
           "defaultChannel": "daily"
         }
       ],
-      "expo-sharing"
+      "expo-sharing",
+      "expo-font"
     ],
     "extra": {
       "eas": {

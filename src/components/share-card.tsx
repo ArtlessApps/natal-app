@@ -4,7 +4,8 @@
 // call site with expandSign() from @/constants/astro.
 import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/theme';
+import { colors, fonts, radius, spacing, type } from '@/constants/theme';
+import { Eyebrow, TriangleMark } from '@/components/ui';
 import { badgeLabel, BADGE_COLORS } from '@/constants/astro';
 import type { DailyReading } from '@/lib/api';
 
@@ -33,14 +34,14 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
     // collapsable={false} stops Android from optimizing this View away
     // before the screenshot happens.
     <View ref={ref} collapsable={false} style={styles.card}>
-      {/* Decorative star field — cheap texture with absolutely-positioned dots */}
+      {/* Decorative star field — gold, to read as celestial rather than noise */}
       {STARS.map((s, i) => (
         <View key={i} style={[styles.star, { top: s.top, left: s.left, opacity: s.o }]} />
       ))}
 
       {data.variant === 'big3' ? (
         <View style={styles.body}>
-          <Text style={styles.eyebrow}>{data.name.toUpperCase()}’S BIG 3</Text>
+          <Eyebrow style={styles.eyebrow}>{data.name}’s Big 3</Eyebrow>
           <Big3Row label="Sun" sign={data.sun} line="the engine" />
           <Big3Row label="Moon" sign={data.moon} line="the weather" />
           <Big3Row
@@ -51,7 +52,7 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
         </View>
       ) : (
         <View style={styles.body}>
-          <Text style={styles.eyebrow}>{data.dateLabel.toUpperCase()}</Text>
+          <Eyebrow style={styles.eyebrow}>{data.dateLabel}</Eyebrow>
           {/* Same label + colors the app's other badges use (WALKING shows
               as "TODAY"), from @/constants/astro. */}
           <View style={[styles.badge, { borderColor: BADGE_COLORS[data.intensity] }]}>
@@ -66,6 +67,7 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
       {/* THE WATERMARK — styled as the card's signature, not a stamp.
           Swap the URL for the App Store link once it exists. */}
       <View style={styles.watermark}>
+        <TriangleMark size={16} color={colors.gold} />
         <Text style={styles.wordmark}>NATAL</Text>
         <Text style={styles.url}>nataljournal.com</Text>
       </View>
@@ -97,38 +99,40 @@ const styles = StyleSheet.create({
   card: {
     width: 360,
     height: 640,               // 9:16 — story format
-    backgroundColor: colors.bg,
+    backgroundColor: colors.bg, // cream — the card is paper, not a night sky
     borderRadius: 0,           // stories are full-bleed; no rounding
-    padding: 32,
+    padding: spacing.xl,
     justifyContent: 'space-between',
     overflow: 'hidden',
   },
   star: {
-    position: 'absolute', width: 3, height: 3, borderRadius: 2,
-    backgroundColor: colors.text,
+    position: 'absolute', width: 3, height: 3, borderRadius: radius.sm,
+    backgroundColor: colors.gold,
   },
   body: { flex: 1, justifyContent: 'center' },
-  eyebrow: {
-    color: colors.muted, letterSpacing: 4, fontSize: 12,
-    textAlign: 'center', marginBottom: 28,
+  eyebrow: { textAlign: 'center', marginBottom: spacing.xl },
+  row: { alignItems: 'center', marginBottom: spacing.xl - 2 },
+  rowLabel: { fontFamily: fonts.bodyMedium, fontSize: type.small, color: colors.muted },
+  rowSign: {
+    fontFamily: fonts.displayBold, fontSize: 34, color: colors.text, marginVertical: 2,
   },
-  row: { alignItems: 'center', marginBottom: 26 },
-  rowLabel: { color: colors.muted, fontSize: 13 },
-  rowSign: { color: colors.text, fontSize: 34, fontWeight: '700', marginVertical: 2 },
-  rowLine: { color: colors.accent, fontSize: 13 },
+  rowLine: { fontFamily: fonts.displayItalic, fontSize: type.small, color: colors.accent },
   // borderColor + text color are set inline from BADGE_COLORS per intensity.
   badge: {
     alignSelf: 'center', borderWidth: 1,
-    borderRadius: 20, paddingHorizontal: 14, paddingVertical: 5, marginBottom: 22,
+    borderRadius: radius.pill, paddingHorizontal: spacing.md - 2, paddingVertical: spacing.xs + 1,
+    marginBottom: spacing.lg - 2,
   },
-  badgeText: { fontSize: 11, letterSpacing: 2 },
+  badgeText: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 2 },
   headline: {
-    color: colors.text, fontSize: 26, fontWeight: '600',
+    fontFamily: fonts.displayBold, fontSize: type.title, color: colors.text,
     textAlign: 'center', lineHeight: 36,
   },
-  watermark: { alignItems: 'center' },
-  wordmark: { color: colors.text, letterSpacing: 6, fontSize: 14, fontWeight: '700' },
-  url: { color: colors.muted, fontSize: 11, marginTop: 4 },
+  watermark: { alignItems: 'center', gap: spacing.xs },
+  wordmark: {
+    fontFamily: fonts.bodyBold, letterSpacing: 6, fontSize: type.small, color: colors.text,
+  },
+  url: { fontFamily: fonts.body, fontSize: type.caption, color: colors.muted },
 });
 
 export default ShareCard;

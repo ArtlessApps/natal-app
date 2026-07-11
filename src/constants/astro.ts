@@ -100,7 +100,7 @@ export const houseOrdinal = (n: number | null): string =>
 export const BADGE_COLORS: Record<string, string> = {
   COLLISION: colors.error,
   TRANSIT: colors.accent,
-  RIPPLE: colors.muted,
+  RIPPLE: colors.goldDeep,
   WALKING: colors.muted,
 };
 

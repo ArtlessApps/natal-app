@@ -6,8 +6,12 @@ import {
   ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View,
 } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { colors } from '@/constants/theme';
-import { BADGE_COLORS, badgeLabel, transitTag } from '@/constants/astro';
+import { colors, fonts, radius, spacing, type } from '@/constants/theme';
+import { Body, Button, Caption } from '@/components/ui';
+import ConfirmDelete from '@/components/confirm-delete';
+import JournalTagRow from '@/components/journal-tag-row';
+import ReadingSnapshot from '@/components/reading-snapshot';
+import { BADGE_COLORS, transitTag } from '@/constants/astro';
 import type { JournalEntry } from '@/types/journal';
 
 export default function JournalEntryDetail() {
@@ -65,7 +69,7 @@ export default function JournalEntryDetail() {
     else goToJournalList();
   }
 
-  if (error) return <Text style={styles.error}>{error}</Text>;
+  if (error) return <Caption style={styles.error}>{error}</Caption>;
   if (!entry) return <ActivityIndicator color={colors.accent} style={styles.spinner} />;
 
   const tag = transitTag(entry.transit_planet, entry.aspect, entry.natal_planet);
@@ -75,104 +79,64 @@ export default function JournalEntryDetail() {
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
       <Pressable onPress={goToJournalList}><Text style={styles.back}>← Journal</Text></Pressable>
 
-      <Text style={styles.date}>
+      <Caption style={styles.date}>
         {new Date(`${entry.entry_date}T12:00:00`).toLocaleDateString(undefined, {
           weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
         })}
-      </Text>
+      </Caption>
 
-      <View style={styles.tagRow}>
-        {!!entry.intensity && (
-          <View style={[styles.badge, { borderColor: badgeColor }]}>
-            <Text style={[styles.badgeText, { color: badgeColor }]}>{badgeLabel(entry.intensity)}</Text>
-          </View>
-        )}
-        {!!tag && (
-          <View style={styles.chip}><Text style={styles.chipText}>{tag}</Text></View>
-        )}
-      </View>
+      <JournalTagRow intensity={entry.intensity} badgeColor={badgeColor} tag={tag} />
 
       {editing ? (
         <>
           <TextInput style={styles.input} value={text} onChangeText={setText} multiline />
           <View style={styles.row}>
-            <Pressable style={styles.button} onPress={saveEdit} disabled={busy}>
-              <Text style={styles.buttonText}>{busy ? 'Saving…' : 'Save'}</Text>
-            </Pressable>
-            <Pressable style={styles.buttonGhost} onPress={() => { setEditing(false); setText(entry.text); }}>
-              <Text style={styles.buttonGhostText}>Cancel</Text>
-            </Pressable>
+            <Button label={busy ? 'Saving…' : 'Save'} onPress={saveEdit} disabled={busy} />
+            <Button variant="ghost" label="Cancel" onPress={() => { setEditing(false); setText(entry.text); }} />
           </View>
         </>
       ) : (
         <>
-          <Text style={styles.entryText}>{entry.text}</Text>
+          <Body style={styles.entryText}>{entry.text}</Body>
           {confirmingDelete ? (
-            <View style={styles.confirmRow}>
-              <Text style={styles.confirmText}>Delete this entry? This can’t be undone.</Text>
-              <View style={styles.row}>
-                <Pressable style={styles.buttonDanger} onPress={deleteEntry} disabled={busy}>
-                  <Text style={styles.buttonText}>{busy ? 'Deleting…' : 'Yes, delete'}</Text>
-                </Pressable>
-                <Pressable style={styles.buttonGhost} onPress={() => setConfirmingDelete(false)}>
-                  <Text style={styles.buttonGhostText}>Cancel</Text>
-                </Pressable>
-              </View>
-            </View>
+            <ConfirmDelete
+              message="Delete this entry? This can’t be undone."
+              confirmLabel={busy ? 'Deleting…' : 'Yes, delete'}
+              busy={busy}
+              onConfirm={deleteEntry}
+              onCancel={() => setConfirmingDelete(false)}
+            />
           ) : (
             <View style={styles.row}>
-              <Pressable style={styles.buttonGhost} onPress={() => setEditing(true)}>
-                <Text style={styles.buttonGhostText}>Edit</Text>
-              </Pressable>
-              <Pressable style={styles.buttonGhost} onPress={() => setConfirmingDelete(true)}>
-                <Text style={[styles.buttonGhostText, { color: colors.error }]}>Delete</Text>
-              </Pressable>
+              <Button variant="ghost" label="Edit" onPress={() => setEditing(true)} />
+              <Button variant="ghost" label="Delete" onPress={() => setConfirmingDelete(true)} labelColor={colors.error} />
             </View>
           )}
         </>
       )}
 
       {(entry.headline || entry.body) && (
-        <View style={styles.snapshot}>
-          <Text style={styles.snapshotLabel}>THAT DAY&apos;S READING</Text>
-          {!!entry.headline && <Text style={styles.snapshotHeadline}>{entry.headline}</Text>}
-          {!!entry.body && <Text style={styles.snapshotBody}>{entry.body}</Text>}
-        </View>
+        <ReadingSnapshot headline={entry.headline} body={entry.body} />
       )}
 
-      <Text style={styles.privacy}>Your journal is never shared or sold.</Text>
+      <Caption style={styles.privacy}>Your journal is never shared or sold.</Caption>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 24, paddingTop: 60, paddingBottom: 60 },
-  back: { color: colors.accent, fontSize: 15, marginBottom: 20 },
-  date: { color: colors.muted, fontSize: 13, marginBottom: 12 },
-  tagRow: { flexDirection: 'row', gap: 8, marginBottom: 20 },
-  badge: { borderWidth: 1, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  badgeText: { fontSize: 11, fontWeight: '700', letterSpacing: 1 },
-  chip: { backgroundColor: colors.surface, borderRadius: 999, paddingHorizontal: 10, paddingVertical: 4 },
-  chipText: { color: colors.accent, fontSize: 12 },
+  container: { padding: spacing.lg, paddingTop: 60, paddingBottom: spacing.xxl },
+  back: { color: colors.accent, fontFamily: fonts.bodyMedium, fontSize: type.small, marginBottom: spacing.lg },
+  date: { marginBottom: spacing.md },
   entryText: { color: colors.text, fontSize: 17, lineHeight: 25 },
   input: {
-    backgroundColor: colors.surface, color: colors.text, borderRadius: 12,
-    padding: 16, fontSize: 16, minHeight: 120, textAlignVertical: 'top',
+    backgroundColor: colors.surface, color: colors.text, fontFamily: fonts.body, fontSize: type.body,
+    borderRadius: radius.md, borderWidth: StyleSheet.hairlineWidth, borderColor: colors.border,
+    padding: spacing.md, minHeight: 120, textAlignVertical: 'top',
   },
-  row: { flexDirection: 'row', gap: 16, marginTop: 16 },
-  button: { backgroundColor: colors.accent, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  buttonText: { color: colors.bg, fontWeight: '600' },
-  buttonGhost: { paddingVertical: 12 },
-  buttonGhostText: { color: colors.accent, fontWeight: '600' },
-  confirmRow: { backgroundColor: colors.surface, borderRadius: 14, padding: 16, marginTop: 16 },
-  confirmText: { color: colors.text, fontSize: 14 },
-  buttonDanger: { backgroundColor: colors.error, borderRadius: 12, paddingVertical: 12, paddingHorizontal: 20 },
-  snapshot: { backgroundColor: colors.surface, borderRadius: 14, padding: 16, marginTop: 32 },
-  snapshotLabel: { color: colors.muted, fontSize: 11, letterSpacing: 1.5, marginBottom: 10 },
-  snapshotHeadline: { color: colors.text, fontSize: 16, fontWeight: '700', marginBottom: 8 },
-  snapshotBody: { color: colors.muted, fontSize: 14, lineHeight: 21 },
-  privacy: { color: colors.muted, fontSize: 12, textAlign: 'center', marginTop: 32 },
+  row: { flexDirection: 'row', gap: spacing.md, marginTop: spacing.md },
+  privacy: { textAlign: 'center', marginTop: spacing.xl },
   spinner: { marginTop: 100 },
   error: { color: colors.error, textAlign: 'center', marginTop: 100 },
 });

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { Pressable, ScrollView, StyleSheet, Text } from 'react-native';
 import { useRouter } from 'expo-router';
-import { colors } from '@/constants/theme';
+import { colors, spacing } from '@/constants/theme';
+import { Tagline, Title } from '@/components/ui';
 import { fetchNatalChart } from '@/lib/api';
 import { addFriend, FREE_FRIEND_LIMIT, listFriends } from '@/lib/friends';
 import BirthDataForm, { type BirthDataValues } from '@/components/birth-data-form';
@@ -48,8 +49,8 @@ export default function AddFriend() {
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
       <Pressable onPress={goBack}><Text style={styles.back}>← Friends</Text></Pressable>
-      <Text style={styles.title}>Add a friend</Text>
-      <Text style={styles.sub}>Their birth details stay private to you.</Text>
+      <Title>Add a friend</Title>
+      <Tagline style={styles.sub}>Their birth details stay private to you.</Tagline>
       <BirthDataForm submitLabel="Compare charts" busy={busy} error={error} onSubmit={handleSubmit} />
     </ScrollView>
   );
@@ -57,8 +58,7 @@ export default function AddFriend() {
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 28, paddingTop: 60, paddingBottom: 60 },
-  back: { color: colors.accent, fontSize: 15, marginBottom: 20 },
-  title: { color: colors.text, fontSize: 30, fontWeight: '700' },
-  sub: { color: colors.muted, marginTop: 6 },
+  container: { padding: spacing.lg + 4, paddingTop: 60, paddingBottom: spacing.xxl },
+  back: { color: colors.accent, fontSize: 15, marginBottom: spacing.lg },
+  sub: { marginTop: spacing.xs, marginBottom: spacing.md },
 });

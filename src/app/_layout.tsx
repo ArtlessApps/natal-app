@@ -4,9 +4,27 @@ import { Stack, useRouter, useSegments } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import * as Notifications from 'expo-notifications';
+import * as SplashScreen from 'expo-splash-screen';
+// Each weight of a Google Font is imported individually. useFonts loads
+// them into memory and tells us when they're ready.
+import {
+  useFonts,
+  PlayfairDisplay_600SemiBold,
+  PlayfairDisplay_700Bold,
+  PlayfairDisplay_500Medium_Italic,
+} from '@expo-google-fonts/playfair-display';
+import {
+  Outfit_400Regular,
+  Outfit_500Medium,
+  Outfit_600SemiBold,
+  Outfit_700Bold,
+} from '@expo-google-fonts/outfit';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
 import { colors } from '../constants/theme';
+
+// Keep the native splash screen visible until we explicitly hide it below.
+SplashScreen.preventAutoHideAsync();
 
 export default function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
@@ -14,6 +32,23 @@ export default function RootLayout() {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
   const segments = useSegments(); // which screen group we're currently in
+
+  // NEW: load the brand fonts. fontsLoaded flips to true once they're in memory.
+  // The keys here become the fontFamily names used in constants/theme.ts.
+  const [fontsLoaded] = useFonts({
+    PlayfairDisplay_600SemiBold,
+    PlayfairDisplay_700Bold,
+    PlayfairDisplay_500Medium_Italic,
+    Outfit_400Regular,
+    Outfit_500Medium,
+    Outfit_600SemiBold,
+    Outfit_700Bold,
+  });
+
+  // NEW: once fonts are ready, drop the splash screen.
+  useEffect(() => {
+    if (fontsLoaded) SplashScreen.hideAsync();
+  }, [fontsLoaded]);
 
   // 1) Learn the login state, and keep listening for changes. Also resets
   // hasProfile the moment session goes away (right here, inside the same
@@ -98,7 +133,8 @@ export default function RootLayout() {
     return () => sub.remove();
   }, [router]);
 
-  if (loading) {
+  // Wait for BOTH auth state and fonts before showing anything.
+  if (loading || !fontsLoaded) {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center' }}>
         <ActivityIndicator color={colors.accent} />
@@ -108,7 +144,8 @@ export default function RootLayout() {
 
   return (
     <>
-      <StatusBar style="light" />
+      {/* "dark" = dark status-bar icons, which is what a cream background needs */}
+      <StatusBar style="dark" />
       <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: colors.bg } }}>
         <Stack.Screen name="sign-in" />
         <Stack.Screen name="onboarding" />

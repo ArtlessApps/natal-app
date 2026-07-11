@@ -1,13 +1,11 @@
 import { useState } from 'react';
-import {
-  View, Text, TextInput, Pressable, StyleSheet, ScrollView, Switch,
-} from 'react-native';
+import { View, TextInput, ScrollView, StyleSheet, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { fetchNatalChart } from '../lib/api';
-import { colors } from '../constants/theme';
-
-type Place = { label: string; lat: number; lng: number };
+import { colors, fonts, spacing, type } from '../constants/theme';
+import { Body, Button, Caption, Eyebrow, Tagline, Title } from '../components/ui';
+import PlaceSearch, { type Place } from '../components/place-search';
 
 export default function Onboarding() {
   const router = useRouter();
@@ -84,19 +82,19 @@ export default function Onboarding() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Cast your chart</Text>
-      <Text style={styles.sub}>Where the planets were the moment you arrived.</Text>
+      <Title>Cast your chart</Title>
+      <Tagline style={styles.sub}>Where the planets were the moment you arrived.</Tagline>
 
-      <Text style={styles.label}>Name</Text>
+      <Eyebrow style={styles.label}>Name</Eyebrow>
       <TextInput style={styles.input} value={name} onChangeText={setName}
         placeholder="Your name" placeholderTextColor={colors.muted} />
 
-      <Text style={styles.label}>Birth date</Text>
+      <Eyebrow style={styles.label}>Birth date</Eyebrow>
       <TextInput style={styles.input} value={date} onChangeText={setDate}
         placeholder="1990-06-15" placeholderTextColor={colors.muted} />
 
       <View style={styles.row}>
-        <Text style={styles.label}>I don’t know my birth time</Text>
+        <Body style={styles.switchLabel}>I don’t know my birth time</Body>
         <Switch value={timeUnknown} onValueChange={setTimeUnknown}
           trackColor={{ true: colors.accent }} />
       </View>
@@ -105,60 +103,45 @@ export default function Onboarding() {
           placeholder="14:30 (24-hour)" placeholderTextColor={colors.muted} />
       )}
       {timeUnknown && (
-        <Text style={styles.note}>
+        <Caption style={styles.note}>
           No problem — we’ll use a noon chart. Your Rising sign won’t be reliable,
           but everything else holds.
-        </Text>
+        </Caption>
       )}
 
-      <Text style={styles.label}>Birth place</Text>
-      <View style={styles.searchRow}>
-        <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]}
-          value={placeQuery} onChangeText={setPlaceQuery}
-          placeholder="City name" placeholderTextColor={colors.muted} />
-        <Pressable style={styles.searchBtn} onPress={searchPlaces}>
-          <Text style={styles.buttonText}>Search</Text>
-        </Pressable>
-      </View>
-      {placeResults.map((p, i) => (
-        <Pressable key={`${i}-${p.lat},${p.lng}`}
-          style={[styles.result, place?.label === p.label && styles.resultActive]}
-          onPress={() => { setPlace(p); setPlaceResults([p]); }}>
-          <Text style={styles.resultText} numberOfLines={2}>{p.label}</Text>
-        </Pressable>
-      ))}
+      <PlaceSearch
+        query={placeQuery}
+        onQueryChange={setPlaceQuery}
+        onSearch={searchPlaces}
+        results={placeResults}
+        selected={place}
+        onSelect={(p) => { setPlace(p); setPlaceResults([p]); }}
+      />
 
-      <Pressable style={[styles.button, !valid && styles.buttonDisabled]}
-        onPress={submit} disabled={!valid || busy}>
-        <Text style={styles.buttonText}>{busy ? 'Reading the sky…' : 'Cast my chart'}</Text>
-      </Pressable>
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      <Button
+        label={busy ? 'Reading the sky…' : 'Cast my chart'}
+        onPress={submit}
+        disabled={!valid || busy}
+        style={styles.submit}
+      />
+      {!!error && <Caption style={styles.error}>{error}</Caption>}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 28, paddingTop: 80, paddingBottom: 60 },
-  title: { color: colors.text, fontSize: 30, fontWeight: '700' },
-  sub: { color: colors.muted, marginTop: 6, marginBottom: 28 },
-  label: { color: colors.text, marginBottom: 8, marginTop: 16, fontWeight: '500' },
+  container: { padding: spacing.lg + 4, paddingTop: 80, paddingBottom: spacing.xxl },
+  sub: { marginTop: spacing.xs, marginBottom: spacing.xl },
+  label: { marginBottom: spacing.sm, marginTop: spacing.md },
+  switchLabel: { flex: 1 },
   input: {
-    backgroundColor: colors.surface, color: colors.text, borderRadius: 12,
-    padding: 16, fontSize: 16, marginBottom: 4,
+    backgroundColor: colors.surface, color: colors.text, fontFamily: fonts.body,
+    fontSize: type.body, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border, padding: 16,
   },
-  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 16 },
-  note: { color: colors.muted, fontSize: 13, marginTop: 8 },
-  searchRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  searchBtn: { backgroundColor: colors.surface, borderRadius: 12, padding: 16 },
-  result: { backgroundColor: colors.surface, borderRadius: 10, padding: 12, marginTop: 8 },
-  resultActive: { borderWidth: 1, borderColor: colors.accent },
-  resultText: { color: colors.text, fontSize: 13 },
-  button: {
-    backgroundColor: colors.accent, borderRadius: 12, padding: 16,
-    alignItems: 'center', marginTop: 32,
-  },
-  buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: colors.bg, fontWeight: '600' },
-  error: { color: colors.error, textAlign: 'center', marginTop: 16 },
+  row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
+  note: { marginTop: spacing.sm },
+  submit: { marginTop: spacing.xl },
+  error: { color: colors.error, textAlign: 'center', marginTop: spacing.md },
 });

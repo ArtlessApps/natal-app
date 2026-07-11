@@ -238,6 +238,13 @@ otp_expiry = 3600
 # admin_email = "admin@email.com"
 # sender_name = "Admin"
 
+# Magic Link template is used for both magic links and email OTP.
+# {{ .Token }} sends a numeric code; {{ .ConfirmationURL }} sends a link.
+# The app sign-in screen expects a code, not a link.
+[auth.email.template.magic_link]
+subject = "Your Natal sign-in code"
+content_path = "./supabase/templates/magic-link.html"
+
 # Uncomment to customize email template
 # [auth.email.template.invite]
 # subject = "You have been invited"

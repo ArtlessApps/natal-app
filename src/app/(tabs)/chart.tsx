@@ -4,14 +4,16 @@
 // the top per PRD §8.5D.
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/theme';
-import { expandSign, houseOrdinal, PLANET_GLYPHS } from '@/constants/astro';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
+import { colors, spacing } from '@/constants/theme';
+import { Body, Button, Eyebrow, Title } from '@/components/ui';
+import { expandSign, PLANET_GLYPHS } from '@/constants/astro';
 import { lessonIdForPlanetKey } from '@/constants/lessons';
 import { getChart, resolvePlacement, type Chart, type Placementish } from '@/lib/learn';
 import { supabase } from '@/lib/supabase';
 import Big3Cards from '@/components/big3-cards';
 import ChartWheel from '@/components/chart-wheel';
+import PlacementRow from '@/components/placement-row';
 import ShareCard from '@/components/share-card';
 import { useShareCard } from '@/lib/use-share-card';
 
@@ -63,7 +65,7 @@ export default function ChartScreen() {
   if (!chart) {
     return (
       <View style={[styles.wrap, styles.center]}>
-        <Text style={styles.error}>We couldn’t load your chart.</Text>
+        <Body style={styles.error}>We couldn’t load your chart.</Body>
       </View>
     );
   }
@@ -74,8 +76,8 @@ export default function ChartScreen() {
 
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
-      <Text style={styles.title}>My Chart</Text>
-      <Text style={styles.subtitle}>Your whole sky, at a glance — tap any planet, house, or sign.</Text>
+      <Title>My Chart</Title>
+      <Body style={styles.subtitle}>Your whole sky, at a glance — tap any planet, house, or sign.</Body>
 
       <ChartWheel
         chart={chart}
@@ -86,14 +88,18 @@ export default function ChartScreen() {
         onHousePress={() => router.push('/learn/paywall?reason=houses')}
       />
 
-      <Text style={[styles.sectionLabel, styles.big3Label]}>YOUR BIG 3</Text>
+      <Eyebrow style={styles.big3Label}>Your Big 3</Eyebrow>
       <Big3Cards big3={chart.big3} timeKnown={birthTimeKnown} />
 
-      <Pressable style={styles.shareButton} onPress={share} disabled={sharing}>
-        <Text style={styles.shareButtonText}>{sharing ? 'Preparing…' : 'Share my Big 3'}</Text>
-      </Pressable>
+      <Button
+        label={sharing ? 'Preparing…' : 'Share my Big 3'}
+        onPress={share}
+        disabled={sharing}
+        variant="terracotta"
+        style={styles.shareButton}
+      />
 
-      <Text style={[styles.sectionLabel, styles.placementsLabel]}>PLACEMENT DETAILS</Text>
+      <Eyebrow style={styles.placementsLabel}>Placement Details</Eyebrow>
       {rows.map(({ key, placement }) => {
         const lessonId = lessonIdForPlanetKey(key);
         const glyph = PLANET_GLYPHS[key] ?? '✦';
@@ -126,63 +132,15 @@ export default function ChartScreen() {
   );
 }
 
-function PlacementRow({
-  glyph, planetName, placement, onPress,
-}: {
-  glyph: string;
-  planetName: string;
-  placement: Placementish;
-  onPress?: () => void;
-}) {
-  const sign = placement.degree != null
-    ? `${placement.signFull} ${Math.floor(placement.degree)}°`
-    : placement.signFull;
-  const meta = [
-    placement.house ? `${houseOrdinal(placement.house)} house` : null,
-    placement.retrograde ? 'retrograde' : null,
-  ].filter(Boolean).join(' · ');
-
-  const Row = onPress ? Pressable : View;
-  return (
-    <Row style={styles.row} onPress={onPress}>
-      <Text style={styles.rowGlyph}>{glyph}</Text>
-      <View style={styles.rowBody}>
-        <Text style={styles.rowPlanet}>{planetName}</Text>
-        <Text style={styles.rowMeta}>
-          {sign}{meta ? ` · ${meta}` : ''}
-          {placement.approximate && !placement.house ? ' (approx.)' : ''}
-        </Text>
-      </View>
-      {onPress && <Text style={styles.chevron}>›</Text>}
-    </Row>
-  );
-}
-
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   center: { justifyContent: 'center', alignItems: 'center' },
-  container: { padding: 24, paddingTop: 70, paddingBottom: 60 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  subtitle: { color: colors.muted, fontSize: 14, marginBottom: 24, lineHeight: 20 },
-  error: { color: colors.error, fontSize: 15 },
+  container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
+  subtitle: { marginTop: spacing.xs, marginBottom: spacing.lg },
+  error: { color: colors.error },
 
-  sectionLabel: { color: colors.muted, fontSize: 12, letterSpacing: 2, fontWeight: '700', marginBottom: 12 },
-  big3Label: { marginTop: 32 },
-  placementsLabel: { marginTop: 28 },
+  big3Label: { marginTop: spacing.xl },
+  placementsLabel: { marginTop: spacing.xl },
 
-  shareButton: {
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent,
-    borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 4, marginBottom: 8,
-  },
-  shareButtonText: { color: colors.accent, fontWeight: '600', fontSize: 15 },
-
-  row: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 12, padding: 14, marginTop: 8,
-  },
-  rowGlyph: { color: colors.accent, fontSize: 20, width: 30, textAlign: 'center' },
-  rowBody: { flex: 1, marginLeft: 6 },
-  rowPlanet: { color: colors.text, fontSize: 16, fontWeight: '600' },
-  rowMeta: { color: colors.muted, fontSize: 13, marginTop: 2 },
-  chevron: { color: colors.muted, fontSize: 22, marginLeft: 8 },
+  shareButton: { marginTop: spacing.xs, marginBottom: spacing.sm },
 });

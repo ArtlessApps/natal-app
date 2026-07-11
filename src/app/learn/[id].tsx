@@ -4,8 +4,10 @@
 import { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/theme';
-import { expandSign, houseOrdinal, PLANET_GLYPHS } from '@/constants/astro';
+import { colors, spacing } from '@/constants/theme';
+import { Body, Button, Caption, Eyebrow, Tagline, Title } from '@/components/ui';
+import LessonPlacementCard from '@/components/lesson-placement-card';
+import { PLANET_GLYPHS } from '@/constants/astro';
 import { findLesson } from '@/constants/lessons';
 import {
   fetchNatalContent, getChart, getCompletedLessonIds, resolvePlacement, setLessonComplete,
@@ -76,7 +78,7 @@ export default function LessonDetail() {
   if (!found) {
     return (
       <View style={[styles.wrap, styles.center]}>
-        <Text style={styles.error}>Lesson not found.</Text>
+        <Caption style={styles.error}>Lesson not found.</Caption>
         <Pressable onPress={() => router.replace('/(tabs)/learn')}>
           <Text style={styles.back}>← Learn</Text>
         </Pressable>
@@ -100,81 +102,46 @@ export default function LessonDetail() {
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
       <Pressable onPress={goBack}><Text style={styles.back}>← Learn</Text></Pressable>
 
-      <Text style={styles.eyebrow}>LEVEL {level.index} · {level.title.toUpperCase()}</Text>
-      <Text style={styles.title}>{lesson.title}</Text>
+      <Eyebrow>Level {level.index} · {level.title}</Eyebrow>
+      <Title style={styles.title}>{lesson.title}</Title>
 
-      {!isStatic && (placement ? (
-        <View style={styles.placementCard}>
-          <Text style={styles.glyph}>{glyph}</Text>
-          <Text style={styles.placementSign}>{expandSign(placement.signAbbr)}</Text>
-          <Text style={styles.placementMeta}>
-            {placement.house ? `${houseOrdinal(placement.house)} house` : 'House unknown'}
-            {placement.retrograde ? ' · retrograde' : ''}
-          </Text>
-          {placement.approximate && !placement.house && (
-            <Text style={styles.caveat}>Approximate — birth time unknown</Text>
-          )}
-        </View>
-      ) : (
-        <View style={styles.placementCard}>
-          <Text style={styles.placementMeta}>This placement isn’t in your chart.</Text>
-        </View>
-      ))}
+      {!isStatic && <LessonPlacementCard glyph={glyph} placement={placement} />}
 
-      <Text style={styles.intro}>{lesson.intro}</Text>
+      <Body style={styles.intro}>{lesson.intro}</Body>
 
       {isStatic ? (
-        <Text style={styles.body}>{lesson.body}</Text>
+        <Body>{lesson.body}</Body>
       ) : content ? (
-        <Text style={styles.body}>{content}</Text>
+        <Body>{content}</Body>
       ) : (
         placement && (
-          <Text style={styles.pending}>
+          <Tagline style={styles.pending}>
             A deeper reading for this exact placement is coming soon.
-          </Text>
+          </Tagline>
         )
       )}
 
-      <Pressable
-        style={[styles.button, done && styles.buttonDone]}
+      <Button
+        variant={done ? 'ghost' : 'primary'}
+        label={busy ? 'Saving…' : done ? '✓ Completed — tap to undo' : 'Mark as read'}
         onPress={toggleDone}
         disabled={busy}
-      >
-        <Text style={[styles.buttonText, done && styles.buttonDoneText]}>
-          {busy ? 'Saving…' : done ? '✓ Completed — tap to undo' : 'Mark as read'}
-        </Text>
-      </Pressable>
+        style={styles.button}
+      />
 
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Caption style={styles.error}>{error}</Caption>}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { justifyContent: 'center', alignItems: 'center', gap: 16 },
-  container: { padding: 24, paddingTop: 60, paddingBottom: 60 },
-  back: { color: colors.accent, fontSize: 15, marginBottom: 20 },
-  eyebrow: { color: colors.muted, fontSize: 11, letterSpacing: 2, fontWeight: '700' },
-  title: { color: colors.text, fontSize: 28, fontWeight: '700', marginTop: 6, marginBottom: 20 },
-
-  placementCard: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, alignItems: 'center', marginBottom: 24 },
-  glyph: { color: colors.accent, fontSize: 34 },
-  placementSign: { color: colors.text, fontSize: 26, fontWeight: '700', marginTop: 6 },
-  placementMeta: { color: colors.muted, fontSize: 14, marginTop: 4 },
-  caveat: { color: colors.accent, fontSize: 12, marginTop: 8 },
-
-  intro: { color: colors.text, fontSize: 17, lineHeight: 25, marginBottom: 16 },
-  body: { color: colors.muted, fontSize: 16, lineHeight: 24 },
-  pending: { color: colors.muted, fontSize: 14, lineHeight: 21, fontStyle: 'italic' },
-
-  button: {
-    backgroundColor: colors.accent, borderRadius: 12, padding: 16,
-    alignItems: 'center', marginTop: 32,
-  },
-  buttonDone: { backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent },
-  buttonText: { color: colors.bg, fontWeight: '700', fontSize: 16 },
-  buttonDoneText: { color: colors.accent },
-
-  error: { color: colors.error, textAlign: 'center', marginTop: 16 },
+  center: { justifyContent: 'center', alignItems: 'center', gap: spacing.md },
+  container: { padding: spacing.lg, paddingTop: 60, paddingBottom: spacing.xxl },
+  back: { color: colors.accent, fontSize: 15, marginBottom: spacing.lg },
+  title: { marginTop: spacing.xs, marginBottom: spacing.lg },
+  intro: { marginBottom: spacing.md },
+  pending: { marginTop: spacing.xs },
+  button: { marginTop: spacing.xl },
+  error: { color: colors.error, textAlign: 'center', marginTop: spacing.md },
 });

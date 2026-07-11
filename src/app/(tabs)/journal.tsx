@@ -2,9 +2,10 @@
 // Private by design — no sharing anywhere in this screen.
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, FlatList, StyleSheet, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { colors } from '@/constants/theme';
+import { colors, spacing } from '@/constants/theme';
+import { Caption, Tagline, Title } from '@/components/ui';
 import JournalEntryRow from '@/components/journal-entry-row';
 import JournalFilterBar, { EMPTY_FILTERS, type JournalFilters as Filters } from '@/components/journal-filters';
 import type { JournalEntry } from '@/types/journal';
@@ -48,8 +49,8 @@ export default function JournalScreen() {
         contentContainerStyle={styles.container}
         ListHeaderComponent={
           <>
-            <Text style={styles.title}>Journal</Text>
-            <Text style={styles.privacy}>Your journal is never shared or sold.</Text>
+            <Title>Journal</Title>
+            <Caption style={styles.privacy}>Your journal is never shared or sold.</Caption>
             <JournalFilterBar filters={filters} onChange={setFilters} />
           </>
         }
@@ -60,25 +61,24 @@ export default function JournalScreen() {
           entries === null ? (
             <ActivityIndicator color={colors.accent} style={styles.spinner} />
           ) : (
-            <Text style={styles.empty}>
+            <Tagline style={styles.empty}>
               {entries.length === 0
                 ? "No entries yet. Answer today's prompt on the Today tab to start."
                 : 'Nothing matches those filters.'}
-            </Text>
+            </Tagline>
           )
         }
       />
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Caption style={styles.error}>{error}</Caption>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 24, paddingTop: 70, paddingBottom: 60 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  privacy: { color: colors.muted, fontSize: 13, marginBottom: 20 },
-  spinner: { marginTop: 60 },
-  empty: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 40, lineHeight: 20 },
-  error: { color: colors.error, textAlign: 'center', padding: 16 },
+  container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
+  privacy: { marginTop: spacing.xs, marginBottom: spacing.lg },
+  spinner: { marginTop: spacing.xxl },
+  empty: { textAlign: 'center', marginTop: spacing.xxl },
+  error: { color: colors.error, textAlign: 'center', padding: spacing.md },
 });

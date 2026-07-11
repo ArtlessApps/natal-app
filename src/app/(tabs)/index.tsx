@@ -3,10 +3,11 @@
 // the signed-in user's saved birth data, asks the API to compute today's
 // reading for it, then renders the result.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { fetchDaily, type DailyReading } from '@/lib/api';
-import { colors } from '@/constants/theme';
+import { colors, spacing } from '@/constants/theme';
+import { Body, Button, Caption, Eyebrow, Title } from '@/components/ui';
 import WhyDisclosure from '@/components/why-disclosure';
 import JournalPrompt from '@/components/journal-prompt';
 import EchoCard from '@/components/echo-card';
@@ -82,15 +83,15 @@ export default function TodayScreen() {
 
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
-      <Text style={styles.date}>{headerDate.toUpperCase()}</Text>
+      <Eyebrow>{headerDate}</Eyebrow>
 
       {!reading && !error && <ActivityIndicator color={colors.accent} style={styles.spinner} />}
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Body style={styles.error}>{error}</Body>}
 
       {reading && userId && (
         <>
-          <Text style={styles.headline}>{reading.headline ?? 'Today'}</Text>
-          <Text style={styles.body}>{reading.body}</Text>
+          <Title style={styles.headline}>{reading.headline ?? 'Today'}</Title>
+          <Body style={styles.body}>{reading.body}</Body>
 
           <WhyDisclosure type={reading.type} driver={reading.driver} />
 
@@ -111,11 +112,13 @@ export default function TodayScreen() {
             driver={reading.driver}
           />
 
-          <Pressable style={styles.shareButton} onPress={share} disabled={sharing}>
-            <Text style={styles.shareButtonText}>
-              {sharing ? 'Preparing…' : 'Share today'}
-            </Text>
-          </Pressable>
+          <Button
+            label={sharing ? 'Preparing…' : 'Share today'}
+            onPress={share}
+            disabled={sharing}
+            variant="terracotta"
+            style={styles.shareButton}
+          />
 
           {/* Off-screen render target — fully laid out but parked far off-screen. */}
           <View style={{ position: 'absolute', left: -9999 }}>
@@ -135,7 +138,7 @@ export default function TodayScreen() {
       {/* The only sign-out control in the app (no Settings screen yet) —
           kept here, unlabeled as "dev", so testers can actually sign out. */}
       <Pressable style={styles.signOut} onPress={() => supabase.auth.signOut()}>
-        <Text style={styles.signOutText}>Sign out</Text>
+        <Caption>Sign out</Caption>
       </Pressable>
     </ScrollView>
   );
@@ -143,17 +146,11 @@ export default function TodayScreen() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 24, paddingTop: 70, paddingBottom: 60 },
-  date: { color: colors.muted, fontSize: 12, letterSpacing: 2, marginBottom: 12 },
-  headline: { color: colors.text, fontSize: 26, fontWeight: '700', lineHeight: 32 },
-  body: { color: colors.text, fontSize: 16, lineHeight: 24, marginTop: 16, opacity: 0.9 },
-  spinner: { marginTop: 60 },
-  error: { color: colors.error, marginTop: 40, textAlign: 'center' },
-  shareButton: {
-    backgroundColor: colors.surface, borderWidth: 1, borderColor: colors.accent,
-    borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 16,
-  },
-  shareButtonText: { color: colors.accent, fontWeight: '600', fontSize: 15 },
-  signOut: { alignSelf: 'center', marginTop: 40 },
-  signOutText: { color: colors.accent },
+  container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
+  headline: { marginTop: spacing.sm },
+  body: { marginTop: spacing.md },
+  spinner: { marginTop: spacing.xxl },
+  error: { color: colors.error, marginTop: spacing.xl, textAlign: 'center' },
+  shareButton: { marginTop: spacing.lg },
+  signOut: { alignSelf: 'center', marginTop: spacing.xl },
 });

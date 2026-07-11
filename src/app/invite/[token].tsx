@@ -3,71 +3,22 @@
 // web too, so nothing native-only here. Four phases: landing → form → reveal
 // → locked. Gift before gate: the guest always gets their own Big 3; only the
 // comparison is locked behind the app.
-import { useEffect, useState } from 'react';
 import { useLocalSearchParams } from 'expo-router';
-import {
-  ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View,
-} from 'react-native';
-import { colors } from '@/constants/theme';
-import {
-  fetchInviteInfo, submitInvite, type Big3, type InviteInfo,
-} from '@/lib/api';
+import { ActivityIndicator, Linking, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { colors, spacing } from '@/constants/theme';
+import { Body, Button, Eyebrow } from '@/components/ui';
 import { APP_STORE_URL, TESTFLIGHT_MODE } from '@/constants/links';
-import BirthDataForm, { type BirthDataValues } from '@/components/birth-data-form';
+import BirthDataForm from '@/components/birth-data-form';
 import Big3Cards from '@/components/big3-cards';
-
-type Phase = 'landing' | 'form' | 'reveal' | 'locked';
+import InvitePayoff from '@/components/invite-payoff';
+import { useInvite } from '@/lib/use-invite';
 
 export default function InvitePage() {
   const { token } = useLocalSearchParams<{ token: string }>();
-  const [phase, setPhase] = useState<Phase>('landing');
-  const [info, setInfo] = useState<InviteInfo | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [notActive, setNotActive] = useState(false); // 404 or missing token
-  const [loadError, setLoadError] = useState('');
-
-  const [busy, setBusy] = useState(false);
-  const [submitError, setSubmitError] = useState('');
-  const [big3, setBig3] = useState<Big3 | null>(null);
-  const [inviterName, setInviterName] = useState('');
-  const [timeKnown, setTimeKnown] = useState(true);
-
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      if (!token) { setNotActive(true); setLoading(false); return; }
-      try {
-        const data = await fetchInviteInfo(token);
-        if (!active) return;
-        if (!data) { setNotActive(true); return; }
-        setInfo(data);
-        setInviterName(data.inviter_name);
-      } catch (e: any) {
-        if (active) setLoadError(e.message ?? 'Couldn’t load this invite.');
-      } finally {
-        if (active) setLoading(false);
-      }
-    })();
-    return () => { active = false; };
-  }, [token]);
-
-  async function handleSubmit(v: BirthDataValues) {
-    if (!token) return;
-    setBusy(true); setSubmitError('');
-    try {
-      const result = await submitInvite(token, {
-        name: v.name, date: v.date, time: v.time, lat: v.lat, lng: v.lng,
-      });
-      setBig3(result.big3);
-      setInviterName(result.inviter_name);
-      setTimeKnown(v.time !== null);
-      setPhase('reveal');
-    } catch (e: any) {
-      setSubmitError(e.message ?? 'Something went wrong. Please try again.');
-    } finally {
-      setBusy(false);
-    }
-  }
+  const {
+    phase, setPhase, info, loading, notActive, loadError,
+    busy, submitError, big3, inviterName, timeKnown, handleSubmit,
+  } = useInvite(token);
 
   if (loading) {
     return (
@@ -80,7 +31,7 @@ export default function InvitePage() {
   if (loadError) {
     return (
       <View style={[styles.wrap, styles.center]}>
-        <Text style={styles.msg}>{loadError}</Text>
+        <Body style={styles.msg}>{loadError}</Body>
       </View>
     );
   }
@@ -89,7 +40,7 @@ export default function InvitePage() {
     return (
       <View style={[styles.wrap, styles.center]}>
         <Text style={styles.glyph}>✦</Text>
-        <Text style={styles.msg}>This invite link isn’t active.</Text>
+        <Body style={styles.msg}>This invite link isn’t active.</Body>
       </View>
     );
   }
@@ -98,7 +49,7 @@ export default function InvitePage() {
     return (
       <View style={[styles.wrap, styles.center]}>
         <Text style={styles.glyph}>✦</Text>
-        <Text style={styles.msg}>This invite was already used.</Text>
+        <Body style={styles.msg}>This invite was already used.</Body>
       </View>
     );
   }
@@ -106,50 +57,44 @@ export default function InvitePage() {
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
       {phase === 'landing' && (
-        <View style={styles.landing}>
-          <Text style={styles.glyph}>✦</Text>
-          <Text style={styles.title}>{inviterName} wants to compare charts with you</Text>
-          <Text style={styles.sub}>
+        <InvitePayoff title={`${inviterName} wants to compare charts with you`}>
+          <Body style={styles.sub}>
             Enter your birth details to see your own Sun, Moon, and Rising — then how your skies fit together.
-          </Text>
-          <Pressable style={styles.button} onPress={() => setPhase('form')}>
-            <Text style={styles.buttonText}>Cast my chart</Text>
-          </Pressable>
-        </View>
+          </Body>
+          <Button label="Cast my chart" onPress={() => setPhase('form')} style={styles.button} />
+        </InvitePayoff>
       )}
 
       {phase === 'form' && (
         <>
-          <Text style={styles.eyebrow}>YOUR BIRTH DETAILS</Text>
-          <Text style={styles.sub}>They stay yours. {inviterName} only sees how you two compare.</Text>
+          <Eyebrow style={styles.eyebrow}>Your Birth Details</Eyebrow>
+          <Body style={styles.sub}>They stay yours. {inviterName} only sees how you two compare.</Body>
           <BirthDataForm submitLabel="Cast my chart" busy={busy} error={submitError} onSubmit={handleSubmit} namePlaceholder="Your name" />
         </>
       )}
 
       {phase === 'reveal' && big3 && (
         <>
-          <Text style={styles.eyebrow}>YOUR BIG 3</Text>
+          <Eyebrow style={styles.eyebrow}>Your Big 3</Eyebrow>
           <Big3Cards big3={big3} timeKnown={timeKnown} />
-          <Pressable style={styles.button} onPress={() => setPhase('locked')}>
-            <Text style={styles.buttonText}>See your compatibility with {inviterName}</Text>
-          </Pressable>
+          <Button
+            label={`See your compatibility with ${inviterName}`}
+            onPress={() => setPhase('locked')}
+            style={styles.button}
+          />
         </>
       )}
 
       {phase === 'locked' && (
-        <View style={styles.landing}>
-          <Text style={styles.glyph}>✦</Text>
-          <Text style={styles.title}>Your compatibility with {inviterName} is ready.</Text>
+        <InvitePayoff title={`Your compatibility with ${inviterName} is ready.`}>
           {TESTFLIGHT_MODE || !APP_STORE_URL ? (
-            <Text style={styles.sub}>
+            <Body style={styles.sub}>
               Natal is in early access — {inviterName} can show you in the app.
-            </Text>
+            </Body>
           ) : (
-            <Pressable style={styles.button} onPress={() => Linking.openURL(APP_STORE_URL)}>
-              <Text style={styles.buttonText}>Get Natal</Text>
-            </Pressable>
+            <Button label="Get Natal" onPress={() => Linking.openURL(APP_STORE_URL)} style={styles.button} />
           )}
-        </View>
+        </InvitePayoff>
       )}
     </ScrollView>
   );
@@ -157,17 +102,11 @@ export default function InvitePage() {
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  center: { justifyContent: 'center', alignItems: 'center', padding: 28, gap: 12 },
-  container: { padding: 28, paddingTop: 90, paddingBottom: 60 },
-  landing: { alignItems: 'center', gap: 16 },
-  glyph: { color: colors.accent, fontSize: 40 },
-  title: { color: colors.text, fontSize: 26, fontWeight: '700', textAlign: 'center', lineHeight: 34 },
-  eyebrow: { color: colors.muted, letterSpacing: 3, fontSize: 12, marginBottom: 12, textAlign: 'center' },
-  sub: { color: colors.muted, fontSize: 15, textAlign: 'center', lineHeight: 22, marginBottom: 8 },
-  msg: { color: colors.text, fontSize: 16, textAlign: 'center', lineHeight: 24 },
-  button: {
-    backgroundColor: colors.accent, borderRadius: 12, padding: 16,
-    alignItems: 'center', marginTop: 24, alignSelf: 'stretch',
-  },
-  buttonText: { color: colors.bg, fontWeight: '700', fontSize: 16 },
+  center: { justifyContent: 'center', alignItems: 'center', padding: spacing.lg + 4, gap: spacing.md },
+  container: { padding: spacing.lg + 4, paddingTop: 90, paddingBottom: spacing.xxl },
+  glyph: { color: colors.gold, fontSize: 40 },
+  eyebrow: { marginBottom: spacing.sm + 4, textAlign: 'center' },
+  sub: { textAlign: 'center', marginBottom: spacing.xs },
+  msg: { textAlign: 'center' },
+  button: { marginTop: spacing.lg, alignSelf: 'stretch' },
 });

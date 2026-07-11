@@ -4,11 +4,11 @@
 // flow, then flips to COMPARED.
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import {
-  ActivityIndicator, FlatList, Platform, Pressable, Share, StyleSheet, Text, View,
-} from 'react-native';
-import { colors } from '@/constants/theme';
-import { expandSign } from '@/constants/astro';
+import { ActivityIndicator, FlatList, Platform, Share, StyleSheet, View } from 'react-native';
+import { colors, spacing } from '@/constants/theme';
+import { Caption, Tagline } from '@/components/ui';
+import FriendRow from '@/components/friend-row';
+import FriendsHeader from '@/components/friends-header';
 import { WEB_URL } from '@/constants/links';
 import { createInvite, deleteFriend, FREE_FRIEND_LIMIT, listFriends } from '@/lib/friends';
 import type { Friend } from '@/types/friend';
@@ -25,9 +25,6 @@ async function shareInviteLink(token: string) {
   }
   await Share.share({ message });
 }
-
-const shortDate = (iso: string) =>
-  new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 
 export default function FriendsScreen() {
   const router = useRouter();
@@ -76,137 +73,42 @@ export default function FriendsScreen() {
         keyExtractor={(f) => f.id}
         contentContainerStyle={styles.container}
         ListHeaderComponent={
-          <>
-            <Text style={styles.title}>Friends</Text>
-            <Text style={styles.subtitle}>
-              Add someone’s chart and see how you fit together.
-            </Text>
-            {friends !== null && (
-              <Text style={styles.count}>{count} of {FREE_FRIEND_LIMIT} friends</Text>
-            )}
-
-            {friends !== null && (
-              <View style={styles.cta}>
-                <Pressable
-                  style={[styles.inviteBtn, atLimit && styles.inviteBtnDisabled]}
-                  onPress={inviteSomeone}
-                  disabled={atLimit}
-                >
-                  <Text style={styles.inviteBtnText}>✦  Invite someone to compare</Text>
-                </Pressable>
-                {atLimit ? (
-                  <View>
-                    <Text style={styles.limitNote}>
-                      You’ve reached the free limit of {FREE_FRIEND_LIMIT} friends. Remove one to invite more, or:
-                    </Text>
-                    <Pressable onPress={() => router.push('/learn/paywall?reason=friends')}>
-                      <Text style={styles.limitLink}>Unlock more with Premium →</Text>
-                    </Pressable>
-                  </View>
-                ) : (
-                  <Pressable onPress={() => router.push('/friends/add')}>
-                    <Text style={styles.manualLink}>Add their details manually</Text>
-                  </Pressable>
-                )}
-              </View>
-            )}
-
-            {pending.length > 0 && (
-              <>
-                <Text style={styles.sectionLabel}>WAITING</Text>
-                {pending.map((item) => (
-                  <View key={item.id} style={styles.pendingRow}>
-                    <View style={styles.pendingDot} />
-                    <Text style={styles.pendingText}>Invite sent · {shortDate(item.created_at)}</Text>
-                    <Pressable onPress={() => resend(item.token)} hitSlop={8}>
-                      <Text style={styles.resend}>Resend</Text>
-                    </Pressable>
-                    <Pressable onPress={() => removeRow(item.id)} hitSlop={8}>
-                      <Text style={styles.remove}>×</Text>
-                    </Pressable>
-                  </View>
-                ))}
-              </>
-            )}
-
-            {completed.length > 0 && <Text style={styles.sectionLabel}>COMPARED</Text>}
-          </>
+          <FriendsHeader
+            friends={friends}
+            pending={pending}
+            completedCount={completed.length}
+            count={count}
+            limit={FREE_FRIEND_LIMIT}
+            atLimit={atLimit}
+            onInvite={inviteSomeone}
+            onResend={resend}
+            onRemove={removeRow}
+            onAddManually={() => router.push('/friends/add')}
+            onUpgrade={() => router.push('/learn/paywall?reason=friends')}
+          />
         }
-        renderItem={({ item }) => {
-          const b3 = item.guest_chart_json?.big3;
-          return (
-            <Pressable style={styles.row} onPress={() => router.push(`/friends/${item.id}`)}>
-              <View style={styles.avatar}>
-                <Text style={styles.avatarText}>
-                  {item.guest_name?.[0]?.toUpperCase() ?? '?'}
-                </Text>
-              </View>
-              <View style={styles.rowBody}>
-                <Text style={styles.name}>{item.guest_name ?? 'Friend'}</Text>
-                {b3 && (
-                  <Text style={styles.big3}>
-                    ☉ {expandSign(b3.sun)} · ☽ {expandSign(b3.moon)} · ↑ {expandSign(b3.rising)}
-                  </Text>
-                )}
-              </View>
-              <Text style={styles.chevron}>›</Text>
-            </Pressable>
-          );
-        }}
+        renderItem={({ item }) => (
+          <FriendRow friend={item} onPress={() => router.push(`/friends/${item.id}`)} />
+        )}
         ListEmptyComponent={
           friends === null ? (
             <ActivityIndicator color={colors.accent} style={styles.spinner} />
           ) : pending.length === 0 ? (
-            <Text style={styles.empty}>
+            <Tagline style={styles.empty}>
               Send someone a link — they add their own details, you both see how your skies fit.
-            </Text>
+            </Tagline>
           ) : null
         }
       />
-      {!!error && <Text style={styles.error}>{error}</Text>}
+      {!!error && <Caption style={styles.error}>{error}</Caption>}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: 24, paddingTop: 70, paddingBottom: 60 },
-  title: { color: colors.text, fontSize: 28, fontWeight: '700', marginBottom: 6 },
-  subtitle: { color: colors.muted, fontSize: 14, marginBottom: 16, lineHeight: 20 },
-  count: { color: colors.muted, fontSize: 12, marginBottom: 12 },
-  cta: { marginBottom: 8 },
-  inviteBtn: { backgroundColor: colors.accent, borderRadius: 12, padding: 16, alignItems: 'center' },
-  inviteBtnDisabled: { opacity: 0.4 },
-  inviteBtnText: { color: colors.bg, fontWeight: '700', fontSize: 16 },
-  manualLink: { color: colors.accent, fontSize: 14, textAlign: 'center', marginTop: 12 },
-  limitNote: { color: colors.muted, fontSize: 13, textAlign: 'center', marginTop: 10 },
-  limitLink: { color: colors.accent, fontSize: 14, fontWeight: '600', textAlign: 'center', marginTop: 8 },
-  sectionLabel: { color: colors.muted, fontSize: 12, letterSpacing: 2, marginTop: 24, marginBottom: 4 },
-  pendingRow: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 14, padding: 16, marginTop: 10, gap: 12,
-  },
-  pendingDot: {
-    width: 12, height: 12, borderRadius: 999, borderWidth: 1, borderColor: colors.muted,
-  },
-  pendingText: { color: colors.muted, fontSize: 14, flex: 1 },
-  resend: { color: colors.accent, fontSize: 14, fontWeight: '600' },
-  remove: { color: colors.muted, fontSize: 22, lineHeight: 22 },
-  row: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.surface,
-    borderRadius: 14, padding: 16, marginTop: 10,
-  },
-  avatar: {
-    width: 44, height: 44, borderRadius: 999, backgroundColor: colors.bg,
-    alignItems: 'center', justifyContent: 'center', marginRight: 14,
-    borderWidth: 1, borderColor: colors.accent,
-  },
-  avatarText: { color: colors.accent, fontSize: 18, fontWeight: '700' },
-  rowBody: { flex: 1 },
-  name: { color: colors.text, fontSize: 17, fontWeight: '600' },
-  big3: { color: colors.muted, fontSize: 13, marginTop: 3 },
-  chevron: { color: colors.muted, fontSize: 22, marginLeft: 8 },
-  empty: { color: colors.muted, fontSize: 14, textAlign: 'center', marginTop: 30, lineHeight: 20 },
-  spinner: { marginTop: 50 },
-  error: { color: colors.error, textAlign: 'center', padding: 16 },
+  container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
+  empty: { textAlign: 'center', marginTop: spacing.xl },
+  spinner: { marginTop: spacing.xxl },
+  error: { color: colors.error, textAlign: 'center', padding: spacing.md },
 });

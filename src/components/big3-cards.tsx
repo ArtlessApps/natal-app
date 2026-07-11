@@ -1,7 +1,8 @@
 // The Big 3 reveal cards (Sun / Moon / Rising), shared by the reveal screen
 // and the invite guest page so both render the identity payoff identically.
-import { StyleSheet, Text, View } from 'react-native';
-import { colors } from '@/constants/theme';
+import { StyleSheet } from 'react-native';
+import { colors, spacing } from '@/constants/theme';
+import { Caption, Card, Eyebrow, Heading, Tagline } from '@/components/ui';
 import { expandSign } from '@/constants/astro';
 import type { Big3 } from '@/lib/api';
 
@@ -26,23 +27,22 @@ export default function Big3Cards({
   return (
     <>
       {rows.map((r) => (
-        <View key={r.key} style={styles.card}>
-          <Text style={styles.cardLabel}>{r.label}</Text>
-          <Text style={styles.cardSign}>{expandSign(r.sign)}</Text>
-          <Text style={styles.cardLine}>{ONE_LINERS[r.key]}</Text>
+        <Card key={r.key} style={styles.card}>
+          <Eyebrow>{r.label}</Eyebrow>
+          <Heading style={styles.sign}>{expandSign(r.sign)}</Heading>
+          <Tagline style={styles.line}>{ONE_LINERS[r.key]}</Tagline>
           {r.key === 'rising' && !timeKnown && (
-            <Text style={styles.caveat}>Approximate — birth time unknown</Text>
+            <Caption style={styles.caveat}>Approximate — birth time unknown</Caption>
           )}
-        </View>
+        </Card>
       ))}
     </>
   );
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.surface, borderRadius: 16, padding: 20, marginBottom: 14 },
-  cardLabel: { color: colors.muted, fontSize: 13 },
-  cardSign: { color: colors.text, fontSize: 26, fontWeight: '700', marginVertical: 4 },
-  cardLine: { color: colors.muted, fontSize: 14 },
-  caveat: { color: colors.accent, fontSize: 12, marginTop: 8 },
+  card: { marginBottom: spacing.md },
+  sign: { marginTop: spacing.xs, marginBottom: spacing.xs },
+  line: { fontSize: 15 },
+  caveat: { color: colors.accent, marginTop: spacing.sm },
 });
