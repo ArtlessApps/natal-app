@@ -24,10 +24,14 @@ CRON_SECRET = os.getenv("CRON_SECRET", "")
 app = FastAPI(title="Natal API")
 
 # Allow the Expo web app (and later the phone app) to call this API.
-# "*" is fine for local development; we'll lock it down at deploy time.
+ALLOWED_ORIGINS = [
+    "http://localhost:8081",  # local dev
+    os.getenv("EXPO_PUBLIC_WEB_URL", ""),  # deployed web app, set in Railway
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[origin for origin in ALLOWED_ORIGINS if origin],
     allow_methods=["*"],
     allow_headers=["*"],
 )
