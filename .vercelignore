@@ -1,0 +1,8 @@
+node_modules
+natal-api/venv
+natal-api/__pycache__
+example
+ios
+android
+.expo
+dist
