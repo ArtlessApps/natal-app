@@ -81,3 +81,38 @@ export function findAspect(absDeg1: number, absDeg2: number): AspectType | null 
   }
   return null;
 }
+
+// Spreads a SORTED list of degrees so no two are closer than `minSep`.
+// Think of the planets as beads on a ring that gently repel each other:
+// each pass, any two beads that are too close get nudged half the
+// shortfall apart, and we repeat until everyone has room (or we hit the
+// iteration cap). The pair check wraps around 360° → 0°, so a cluster
+// straddling the Aries point spreads correctly too.
+//
+// IMPORTANT: this only moves where the GLYPH is drawn. The planet's true
+// degree still drives its anchor dot, its aspect lines, and the pointer
+// line — so the chart stays astronomically accurate.
+export function relaxDegrees(sortedDegs: number[], minSep: number, iterations = 80): number[] {
+  const out = [...sortedDegs];
+  const n = out.length;
+  if (n < 2) return out;
+
+  for (let pass = 0; pass < iterations; pass++) {
+    let moved = false;
+    for (let i = 0; i < n; i++) {
+      const j = (i + 1) % n; // neighbor, wrapping last → first
+      let gap = out[j] - out[i];
+      if (j === 0) gap += 360; // the wraparound pair measures across 0°
+      if (gap < minSep) {
+        const push = (minSep - gap) / 2;
+        out[i] -= push; // nudge this one backward…
+        out[j] += push; // …and its neighbor forward
+        moved = true;
+      }
+    }
+    if (!moved) break; // everyone has room — stop early
+  }
+
+  // Normalize back into 0–360 (nudging can drift values past the edges).
+  return out.map((d) => ((d % 360) + 360) % 360);
+}

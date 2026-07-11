@@ -18,6 +18,32 @@ export const SIGN_GLYPHS: Record<string, string> = {
   Lib: '♎', Sco: '♏', Sag: '♐', Cap: '♑', Aqu: '♒', Pis: '♓',
 };
 
+// Every zodiac sign belongs to one of the four classical elements.
+// The wheel uses this to give each sign's wedge a soft color wash,
+// so the ring reads as four repeating "seasons" instead of a
+// gray checkerboard.
+export const SIGN_ELEMENTS: Record<string, 'fire' | 'earth' | 'air' | 'water'> = {
+  Ari: 'fire',  Leo: 'fire',  Sag: 'fire',
+  Tau: 'earth', Vir: 'earth', Cap: 'earth',
+  Gem: 'air',   Lib: 'air',   Aqu: 'air',
+  Can: 'water', Sco: 'water', Pis: 'water',
+};
+
+// Which brand color each element borrows. No new hex values —
+// these all come from constants/theme.ts, keeping the "no hardcoded
+// colors in components" rule intact. The wheel paints these at ~10%
+// opacity, so they read as a whisper of color, not a rainbow.
+//   fire  → terracotta (energy)
+//   earth → deep gold  (grounded)
+//   air   → warm gray  (light, airy)
+//   water → slate blue (the app's blue)
+export const ELEMENT_TINTS: Record<string, string> = {
+  fire: colors.terracotta,
+  earth: colors.goldDeep,
+  air: colors.muted,
+  water: colors.accent,
+};
+
 // Aspect line color on the chart wheel: harmonious angles read as the
 // app's accent, tense angles as the app's (already-soft) error red,
 // conjunctions as neutral — echoes the accent/error split used everywhere
