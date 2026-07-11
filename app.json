@@ -12,8 +12,10 @@
       "bundleIdentifier": "com.artlessapps.natal",
       "infoPlist": {
         "UIBackgroundModes": [
+          "remote-notification",
           "remote-notification"
-        ]
+        ],
+        "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
@@ -51,12 +53,14 @@
     ],
     "extra": {
       "eas": {
-        "projectId": ""
-      }
+        "projectId": "bcbaba47-871c-4dd4-abc8-440f00b249e7"
+      },
+      "router": {}
     },
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
-    }
+    },
+    "owner": "ndame"
   }
 }
