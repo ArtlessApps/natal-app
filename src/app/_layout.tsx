@@ -5,6 +5,7 @@ import { StatusBar } from 'expo-status-bar';
 import { Session } from '@supabase/supabase-js';
 import * as Notifications from 'expo-notifications';
 import * as SplashScreen from 'expo-splash-screen';
+import * as Sentry from '@sentry/react-native';
 // Each weight of a Google Font is imported individually. useFonts loads
 // them into memory and tells us when they're ready.
 import {
@@ -26,7 +27,26 @@ import { colors } from '../constants/theme';
 // Keep the native splash screen visible until we explicitly hide it below.
 SplashScreen.preventAutoHideAsync();
 
-export default function RootLayout() {
+Sentry.init({
+  dsn: 'https://ed795cfeaad295ea11f9f5cdab33307e@o4511723132616704.ingest.us.sentry.io/4511723143233536',
+
+  // Adds more context data to events (IP address, cookies, user, etc.)
+  // For more information, visit: https://docs.sentry.io/platforms/react-native/data-management/data-collected/
+  sendDefaultPii: true,
+
+  // Enable Logs
+  enableLogs: true,
+
+  // Configure Session Replay
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1,
+  integrations: [Sentry.mobileReplayIntegration(), Sentry.feedbackIntegration()],
+
+  // uncomment the line below to enable Spotlight (https://spotlightjs.com)
+  // spotlight: __DEV__,
+});
+
+function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,3 +181,5 @@ export default function RootLayout() {
     </>
   );
 }
+
+export default Sentry.wrap(RootLayout);

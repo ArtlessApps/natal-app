@@ -49,7 +49,15 @@
         }
       ],
       "expo-sharing",
-      "expo-font"
+      "expo-font",
+      [
+        "@sentry/react-native/expo",
+        {
+          "url": "https://sentry.io/",
+          "project": "natal-app",
+          "organization": "artlessapps"
+        }
+      ]
     ],
     "extra": {
       "eas": {
