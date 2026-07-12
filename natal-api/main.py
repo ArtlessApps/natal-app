@@ -4,6 +4,7 @@
 import os
 from datetime import date as date_type
 
+import sentry_sdk
 from dotenv import load_dotenv
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -15,6 +16,14 @@ import push  # daily Expo Push pipeline (Build Phase 6)
 import compat  # synastry-lite comparison (Build Phase 8)
 
 load_dotenv()  # reads .env so engine.py can reach Supabase
+
+# No-ops if SENTRY_DSN is unset, so local dev works without Sentry configured.
+sentry_sdk.init(
+    dsn=os.getenv("SENTRY_DSN", ""),
+    environment=os.getenv("RAILWAY_ENVIRONMENT_NAME", "development"),
+    send_default_pii=True,
+    traces_sample_rate=1.0,
+)
 
 # Shared secret for the hourly cron. Set CRON_SECRET in natal-api/.env and
 # pass it as `Authorization: Bearer <secret>` (or `x-cron-secret`) from the
