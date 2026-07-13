@@ -68,11 +68,13 @@ const SIGN_ABBRS = Object.keys(SIGN_NAMES);
 const capitalize = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 export default function ChartWheel({
-  chart, onPlanetPress, onHousePress,
+  chart, onPlanetPress, onHousePress, exploredPlanetKeys,
 }: {
   chart: Chart;
   onPlanetPress: (planetKey: string) => void;
   onHousePress: () => void;
+  /** Planet keys (e.g. "Sun", "Ascendant") whose Learn lesson is complete. */
+  exploredPlanetKeys?: Set<string>;
 }) {
   const [signSheet, setSignSheet] = useState<string | null>(null);
 
@@ -253,20 +255,42 @@ export default function ChartWheel({
               pointer    — thin line from the coin to its anchor dot
               coin       — the tappable glyph, at its FANNED-OUT position */}
         {planetPoints.map((p) => {
+          const planetKey = capitalize(p.planet);
+          const explored = exploredPlanetKeys?.has(planetKey) ?? false;
           const coin = polarPoint(CX, CY, R_PLANET, angle(p.glyphDeg));
           const coinInner = polarPoint(CX, CY, R_PLANET - COIN_R - 1.5, angle(p.glyphDeg));
           const anchor = polarPoint(CX, CY, R_ANCHOR, angle(p.absDeg));
-          const glyph = PLANET_GLYPHS[capitalize(p.planet)] ?? '✦';
+          const glyph = PLANET_GLYPHS[planetKey] ?? '✦';
           return (
-            <G key={p.planet} onPress={() => onPlanetPress(capitalize(p.planet))}>
+            <G key={p.planet} onPress={() => onPlanetPress(planetKey)}>
               <Line
                 x1={coinInner.x} y1={coinInner.y} x2={anchor.x} y2={anchor.y}
-                stroke={colors.muted} strokeWidth={0.6} opacity={0.5}
+                stroke={explored ? colors.accent : colors.muted}
+                strokeWidth={0.6}
+                opacity={explored ? 0.75 : 0.5}
               />
-              <Circle cx={anchor.x} cy={anchor.y} r={1.8} fill={colors.goldDeep} opacity={0.9} />
-              <Circle cx={coin.x} cy={coin.y} r={COIN_R + 2.5} fill={colors.gold} opacity={0.14} />
-              <Circle cx={coin.x} cy={coin.y} r={COIN_R} fill={colors.surface} stroke={colors.goldDeep} strokeWidth={1.1} />
-              <SvgText x={coin.x} y={coin.y + 4.5} fontSize={12} fill={colors.text} textAnchor="middle">
+              <Circle
+                cx={anchor.x} cy={anchor.y} r={1.8}
+                fill={explored ? colors.accent : colors.goldDeep}
+                opacity={0.9}
+              />
+              <Circle
+                cx={coin.x} cy={coin.y} r={COIN_R + 2.5}
+                fill={explored ? colors.accent : colors.gold}
+                opacity={explored ? 0.22 : 0.14}
+              />
+              <Circle
+                cx={coin.x} cy={coin.y} r={COIN_R}
+                fill={explored ? colors.accent : colors.surface}
+                stroke={explored ? colors.accent : colors.goldDeep}
+                strokeWidth={1.1}
+              />
+              <SvgText
+                x={coin.x} y={coin.y + 4.5}
+                fontSize={12}
+                fill={explored ? colors.bg : colors.text}
+                textAnchor="middle"
+              >
                 {glyph + TXT}
               </SvgText>
               {p.retrograde && (

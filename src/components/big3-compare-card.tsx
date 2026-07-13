@@ -44,7 +44,7 @@ const Big3CompareCard = forwardRef<View, Props>(({ nameA, big3A, nameB, big3B },
           </Text>
         </View>
       ))}
-      <Text style={styles.brand}>Natal</Text>
+      <Text style={styles.brand}>nataljournal.com</Text>
     </View>
   );
 });

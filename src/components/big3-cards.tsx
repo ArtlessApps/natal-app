@@ -1,7 +1,7 @@
 // The Big 3 reveal cards (Sun / Moon / Rising), shared by the reveal screen
 // and the invite guest page so both render the identity payoff identically.
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { colors, spacing } from '@/constants/theme';
+import { colors, fonts, spacing } from '@/constants/theme';
 import { Caption, Card, Eyebrow, Heading, Tagline } from '@/components/ui';
 import { expandSign } from '@/constants/astro';
 import type { Big3 } from '@/lib/api';
@@ -18,10 +18,13 @@ export default function Big3Cards({
   big3,
   timeKnown = true,
   onCardPress,
+  exploredKeys,
 }: {
   big3: Big3;
   timeKnown?: boolean;
   onCardPress?: (key: Big3Key) => void;
+  /** Big 3 cards whose Learn lesson is complete. */
+  exploredKeys?: Set<Big3Key>;
 }) {
   const rows: { key: Big3Key; label: string; sign: string }[] = [
     { key: 'sun', label: 'Sun', sign: big3.sun },
@@ -31,11 +34,19 @@ export default function Big3Cards({
   return (
     <>
       {rows.map((r) => {
+        const explored = exploredKeys?.has(r.key) ?? false;
         const content = (
           <>
             <View style={styles.header}>
               <Eyebrow>{r.label}</Eyebrow>
-              {onCardPress && <Text style={styles.chevron}>›</Text>}
+              <View style={styles.headerRight}>
+                {explored && (
+                  <View style={styles.check}>
+                    <Text style={styles.checkMark}>✓</Text>
+                  </View>
+                )}
+                {onCardPress && <Text style={styles.chevron}>›</Text>}
+              </View>
             </View>
             <Tagline style={styles.line}>{ONE_LINERS[r.key]}</Tagline>
             <Heading style={styles.sign}>{expandSign(r.sign)}</Heading>
@@ -46,7 +57,7 @@ export default function Big3Cards({
         );
         if (!onCardPress) {
           return (
-            <Card key={r.key} style={styles.card}>
+            <Card key={r.key} style={[styles.card, explored && styles.cardExplored]}>
               {content}
             </Card>
           );
@@ -57,7 +68,7 @@ export default function Big3Cards({
             onPress={() => onCardPress(r.key)}
             style={({ pressed }) => [styles.card, pressed && styles.pressed]}
           >
-            <Card style={styles.cardFill}>{content}</Card>
+            <Card style={[styles.cardFill, explored && styles.cardExplored]}>{content}</Card>
           </Pressable>
         );
       })}
@@ -68,8 +79,19 @@ export default function Big3Cards({
 const styles = StyleSheet.create({
   card: { marginBottom: spacing.md },
   cardFill: { marginBottom: 0 },
+  cardExplored: { borderColor: colors.accent, borderWidth: 1.5 },
   pressed: { opacity: 0.85 },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  check: {
+    width: 20,
+    height: 20,
+    borderRadius: 999,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checkMark: { color: colors.bg, fontSize: 12, fontFamily: fonts.bodyBold },
   chevron: { color: colors.muted, fontSize: 22 },
   sign: { marginTop: spacing.sm },
   line: { marginTop: spacing.xs, fontSize: 15 },

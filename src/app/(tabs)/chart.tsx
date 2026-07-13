@@ -9,7 +9,7 @@ import { colors, spacing } from '@/constants/theme';
 import { Body, Button, Eyebrow, Title } from '@/components/ui';
 import { expandSign, PLANET_GLYPHS } from '@/constants/astro';
 import { lessonIdForBig3Key, lessonIdForPlanetKey } from '@/constants/lessons';
-import { getChart, resolvePlacement, type Chart, type Placementish } from '@/lib/learn';
+import { getChart, getCompletedLessonIds, resolvePlacement, type Chart, type Placementish } from '@/lib/learn';
 import { supabase } from '@/lib/supabase';
 import Big3Cards, { type Big3Key } from '@/components/big3-cards';
 import ChartWheel from '@/components/chart-wheel';
@@ -30,14 +30,16 @@ export default function ChartScreen() {
   const [name, setName] = useState('');
   const [chart, setChart] = useState<Chart | null>(null);
   const [birthTimeKnown, setBirthTimeKnown] = useState(true);
+  const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
   const { cardRef, share, sharing } = useShareCard();
 
   const load = useCallback(() => {
     let active = true;
     (async () => {
-      const [{ chart: c, birthTimeKnown: bt }, { data: { user } }] = await Promise.all([
+      const [{ chart: c, birthTimeKnown: bt }, done, { data: { user } }] = await Promise.all([
         getChart(),
+        getCompletedLessonIds(),
         supabase.auth.getUser(),
       ]);
       const profile = user
@@ -46,6 +48,7 @@ export default function ChartScreen() {
       if (!active) return;
       setChart(c);
       setBirthTimeKnown(bt);
+      setCompleted(done);
       setName(profile?.data?.name ?? '');
       setLoading(false);
     })();
@@ -74,6 +77,20 @@ export default function ChartScreen() {
     .map((key) => ({ key, placement: resolvePlacement(chart, key, birthTimeKnown) }))
     .filter((r): r is { key: string; placement: Placementish } => r.placement != null);
 
+  const exploredPlanetKeys = new Set(
+    PLANET_KEYS.filter((key) => {
+      const lessonId = lessonIdForPlanetKey(key);
+      return lessonId != null && completed.has(lessonId);
+    }),
+  );
+
+  const exploredBig3Keys = new Set<Big3Key>(
+    (['sun', 'moon', 'rising'] as const).filter((key) => {
+      const lessonId = lessonIdForBig3Key(key);
+      return lessonId != null && completed.has(lessonId);
+    }),
+  );
+
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
       <Title>My Chart</Title>
@@ -81,6 +98,7 @@ export default function ChartScreen() {
 
       <ChartWheel
         chart={chart}
+        exploredPlanetKeys={exploredPlanetKeys}
         onPlanetPress={(planetKey) => {
           const lessonId = lessonIdForPlanetKey(planetKey);
           if (lessonId) router.push(`/learn/${lessonId}`);
@@ -92,6 +110,7 @@ export default function ChartScreen() {
       <Big3Cards
         big3={chart.big3}
         timeKnown={birthTimeKnown}
+        exploredKeys={exploredBig3Keys}
         onCardPress={(key: Big3Key) => {
           const lessonId = lessonIdForBig3Key(key);
           if (lessonId) router.push(`/learn/${lessonId}`);
@@ -116,6 +135,7 @@ export default function ChartScreen() {
             glyph={glyph}
             planetName={key === 'Ascendant' ? 'Rising' : key}
             placement={placement}
+            explored={lessonId ? completed.has(lessonId) : false}
             onPress={lessonId ? () => router.push(`/learn/${lessonId}`) : undefined}
           />
         );

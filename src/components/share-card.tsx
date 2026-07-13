@@ -64,12 +64,10 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
         </View>
       )}
 
-      {/* THE WATERMARK — styled as the card's signature, not a stamp.
-          Swap the URL for the App Store link once it exists. */}
+      {/* THE WATERMARK — styled as the card's signature, not a stamp. */}
       <View style={styles.watermark}>
         <TriangleMark size={16} color={colors.gold} />
-        <Text style={styles.wordmark}>NATAL</Text>
-        <Text style={styles.url}>nataljournal.com</Text>
+        <Text style={styles.wordmark}>nataljournal.com</Text>
       </View>
     </View>
   );
@@ -130,9 +128,8 @@ const styles = StyleSheet.create({
   },
   watermark: { alignItems: 'center', gap: spacing.xs },
   wordmark: {
-    fontFamily: fonts.bodyBold, letterSpacing: 6, fontSize: type.small, color: colors.text,
+    fontFamily: fonts.bodyBold, letterSpacing: 1, fontSize: type.small, color: colors.text,
   },
-  url: { fontFamily: fonts.body, fontSize: type.caption, color: colors.muted },
 });
 
 export default ShareCard;
