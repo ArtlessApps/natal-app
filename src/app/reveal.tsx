@@ -9,7 +9,8 @@ import { registerForPushNotifications } from '@/lib/notifications';
 import { colors, spacing } from '@/constants/theme';
 import { Button, Eyebrow } from '@/components/ui';
 import { expandSign } from '@/constants/astro';
-import Big3Cards from '@/components/big3-cards';
+import { lessonIdForBig3Key } from '@/constants/lessons';
+import Big3Cards, { type Big3Key } from '@/components/big3-cards';
 import ShareCard from '@/components/share-card';
 import { useShareCard } from '@/lib/use-share-card';
 
@@ -56,7 +57,14 @@ export default function Reveal() {
   return (
     <View style={styles.container}>
       <Eyebrow style={styles.eyebrow}>Your Big 3</Eyebrow>
-      <Big3Cards big3={big3} timeKnown={timeKnown} />
+      <Big3Cards
+        big3={big3}
+        timeKnown={timeKnown}
+        onCardPress={(key: Big3Key) => {
+          const lessonId = lessonIdForBig3Key(key);
+          if (lessonId) router.push(`/learn/${lessonId}`);
+        }}
+      />
 
       <Button
         label={sharing ? 'Preparing…' : 'Share my Big 3'}

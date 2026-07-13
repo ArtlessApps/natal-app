@@ -8,10 +8,10 @@ import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { colors, spacing } from '@/constants/theme';
 import { Body, Button, Eyebrow, Title } from '@/components/ui';
 import { expandSign, PLANET_GLYPHS } from '@/constants/astro';
-import { lessonIdForPlanetKey } from '@/constants/lessons';
+import { lessonIdForBig3Key, lessonIdForPlanetKey } from '@/constants/lessons';
 import { getChart, resolvePlacement, type Chart, type Placementish } from '@/lib/learn';
 import { supabase } from '@/lib/supabase';
-import Big3Cards from '@/components/big3-cards';
+import Big3Cards, { type Big3Key } from '@/components/big3-cards';
 import ChartWheel from '@/components/chart-wheel';
 import PlacementRow from '@/components/placement-row';
 import ShareCard from '@/components/share-card';
@@ -89,7 +89,14 @@ export default function ChartScreen() {
       />
 
       <Eyebrow style={styles.big3Label}>Your Big 3</Eyebrow>
-      <Big3Cards big3={chart.big3} timeKnown={birthTimeKnown} />
+      <Big3Cards
+        big3={chart.big3}
+        timeKnown={birthTimeKnown}
+        onCardPress={(key: Big3Key) => {
+          const lessonId = lessonIdForBig3Key(key);
+          if (lessonId) router.push(`/learn/${lessonId}`);
+        }}
+      />
 
       <Button
         label={sharing ? 'Preparing…' : 'Share my Big 3'}

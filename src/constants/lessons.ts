@@ -181,3 +181,7 @@ const LESSON_ID_BY_PLANET_KEY: Record<string, string> = Object.fromEntries(
 );
 export const lessonIdForPlanetKey = (planetKey: string): string | null =>
   LESSON_ID_BY_PLANET_KEY[planetKey.toLowerCase()] ?? null;
+
+const BIG3_PLANET_KEYS = { sun: 'Sun', moon: 'Moon', rising: 'Ascendant' } as const;
+export const lessonIdForBig3Key = (key: keyof typeof BIG3_PLANET_KEYS): string | null =>
+  lessonIdForPlanetKey(BIG3_PLANET_KEYS[key]);
