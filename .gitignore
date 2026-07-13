@@ -49,4 +49,10 @@ example
 # supabase CLI local cache
 supabase/.temp
 
+# Railway CLI scratch (config pull creates these locally)
+.railway-config-pull-*/
+
+# macOS Finder duplicate copies of lockfiles
+package-lock [0-9]*.json
+
 .env.local
