@@ -111,7 +111,7 @@ function RootLayout() {
   // the tabs — add new ones here as they're built (e.g. journal/[id]).
   // 'invite' is the public guest page (Step 8.6): a signed-in user opening
   // their own link must not be bounced to the tabs.
-  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite'];
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
@@ -177,6 +177,7 @@ function RootLayout() {
         <Stack.Screen name="friends/add" />
         <Stack.Screen name="friends/[id]" />
         <Stack.Screen name="invite/[token]" />
+        <Stack.Screen name="settings" />
       </Stack>
     </>
   );

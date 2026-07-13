@@ -2,10 +2,26 @@
 // their labels, icons, and colors. Each <Tabs.Screen name="X">
 // points to a file called X.tsx in this same folder.
 
-import { Tabs } from "expo-router";
+import { Pressable } from "react-native";
+import { Tabs, useRouter } from "expo-router";
 import { Ionicons } from "@expo/vector-icons"; // icon set that ships with Expo
 
-import { colors } from "@/constants/theme";
+import { colors, spacing } from "@/constants/theme";
+
+function SettingsButton() {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push("/settings")}
+      hitSlop={8}
+      style={{ marginRight: spacing.sm }}
+      accessibilityLabel="Settings"
+      accessibilityRole="button"
+    >
+      <Ionicons name="settings-outline" size={22} color={colors.text} />
+    </Pressable>
+  );
+}
 
 export default function TabLayout() {
   return (
@@ -60,6 +76,7 @@ export default function TabLayout() {
         name="chart"
         options={{
           title: "Chart",
+          headerRight: () => <SettingsButton />,
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="planet-outline" size={size} color={color} />
           ),

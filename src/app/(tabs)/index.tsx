@@ -3,11 +3,11 @@
 // the signed-in user's saved birth data, asks the API to compute today's
 // reading for it, then renders the result.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { fetchDaily, type DailyReading } from '@/lib/api';
 import { colors, spacing } from '@/constants/theme';
-import { Body, Button, Caption, Eyebrow, Title } from '@/components/ui';
+import { Body, Button, Eyebrow, Title } from '@/components/ui';
 import WhyDisclosure from '@/components/why-disclosure';
 import JournalPrompt from '@/components/journal-prompt';
 import EchoCard from '@/components/echo-card';
@@ -134,12 +134,6 @@ export default function TodayScreen() {
           </View>
         </>
       )}
-
-      {/* The only sign-out control in the app (no Settings screen yet) —
-          kept here, unlabeled as "dev", so testers can actually sign out. */}
-      <Pressable style={styles.signOut} onPress={() => supabase.auth.signOut()}>
-        <Caption>Sign out</Caption>
-      </Pressable>
     </ScrollView>
   );
 }
@@ -152,5 +146,4 @@ const styles = StyleSheet.create({
   spinner: { marginTop: spacing.xxl },
   error: { color: colors.error, marginTop: spacing.xl, textAlign: 'center' },
   shareButton: { marginTop: spacing.lg },
-  signOut: { alignSelf: 'center', marginTop: spacing.xl },
 });
