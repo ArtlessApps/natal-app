@@ -8,14 +8,16 @@
     "scheme": "natalapp",
     "userInterfaceStyle": "automatic",
     "ios": {
-      "icon": "./assets/expo.icon",
+      "icon": "./assets/images/icon.png",
       "bundleIdentifier": "com.artlessapps.natal",
+      "supportsTablet": false,
+      "config": {
+        "usesNonExemptEncryption": false
+      },
       "infoPlist": {
         "UIBackgroundModes": [
-          "remote-notification",
           "remote-notification"
-        ],
-        "ITSAppUsesNonExemptEncryption": false
+        ]
       }
     },
     "android": {
