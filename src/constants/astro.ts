@@ -84,6 +84,12 @@ export const SIGN_NAMES: Record<string, string> = {
 
 export const expandSign = (abbr: string): string => SIGN_NAMES[abbr] ?? abbr;
 
+/** Zodiac glyph for a full sign name (post-expandSign), e.g. "Gemini" → "♊". */
+export const signGlyph = (name: string): string => {
+  const abbr = Object.entries(SIGN_NAMES).find(([, full]) => full === name)?.[0];
+  return abbr ? SIGN_GLYPHS[abbr] : '';
+};
+
 // One-line, planet-agnostic "what this sign is about" — shown when tapping
 // a sign wedge on the chart wheel. Keyed by full name (post-expandSign).
 export const SIGN_BLURBS: Record<string, string> = {

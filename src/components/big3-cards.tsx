@@ -8,7 +8,7 @@ import type { Big3 } from '@/lib/api';
 
 export type Big3Key = 'sun' | 'moon' | 'rising';
 
-const ONE_LINERS: Record<Big3Key, string> = {
+export const BIG3_ONE_LINERS: Record<Big3Key, string> = {
   sun: 'Your core identity, ego, and life purpose.',
   moon: 'Your emotions and instincts.',
   rising: 'How others see you and how you engage the world.',
@@ -48,7 +48,7 @@ export default function Big3Cards({
                 {onCardPress && <Text style={styles.chevron}>›</Text>}
               </View>
             </View>
-            <Tagline style={styles.line}>{ONE_LINERS[r.key]}</Tagline>
+            <Tagline style={styles.line}>{BIG3_ONE_LINERS[r.key]}</Tagline>
             <Heading style={styles.sign}>{expandSign(r.sign)}</Heading>
             {r.key === 'rising' && !timeKnown && (
               <Caption style={styles.caveat}>Approximate — birth time unknown</Caption>

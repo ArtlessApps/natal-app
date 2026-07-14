@@ -4,10 +4,37 @@
 // call site with expandSign() from @/constants/astro.
 import { forwardRef } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { colors, fonts, radius, spacing, type } from '@/constants/theme';
-import { Eyebrow, TriangleMark } from '@/components/ui';
-import { badgeLabel, BADGE_COLORS } from '@/constants/astro';
+import { fonts, radius, spacing } from '@/constants/theme';
+import { TriangleMark } from '@/components/ui';
+import { BIG3_ONE_LINERS } from '@/components/big3-cards';
+import { badgeLabel, BADGE_COLORS, signGlyph } from '@/constants/astro';
 import type { DailyReading } from '@/lib/api';
+
+// Force iOS to render zodiac symbols as text (gold) instead of purple emoji.
+const TXT = '\uFE0E';
+
+// Dark share-card palette — tuned for screenshot legibility, not the app theme.
+const card = {
+  bg: '#211f2c',
+  gold: '#d4a95f',
+  goldDot: '#b8873f',
+  desc: '#b8b3c4',
+  sign: '#f7f4ee',
+  signLead: '#ffffff',
+};
+
+const BIG3_ROWS = [
+  { key: 'sun' as const, planetGlyph: '☉', label: 'SUN' },
+  { key: 'moon' as const, planetGlyph: '☽', label: 'MOON' },
+  { key: 'rising' as const, planetGlyph: '↑', label: 'RISING' },
+];
+
+// Share card uses tighter copy than in-app Big 3 cards where noted.
+const SHARE_LINES = {
+  sun: BIG3_ONE_LINERS.sun,
+  moon: BIG3_ONE_LINERS.moon,
+  rising: 'How others see you.',
+};
 
 // ---- Types for the two card variants ----
 export type Big3CardData = {
@@ -22,6 +49,7 @@ export type Big3CardData = {
 export type TodayCardData = {
   variant: 'today';
   headline: string;
+  body: string;
   intensity: DailyReading['type']; // 'COLLISION' | 'TRANSIT' | 'RIPPLE' | 'WALKING'
   dateLabel: string; // e.g. "Thursday, July 9"
 };
@@ -34,39 +62,52 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
     // collapsable={false} stops Android from optimizing this View away
     // before the screenshot happens.
     <View ref={ref} collapsable={false} style={styles.card}>
-      {/* Decorative star field — gold, to read as celestial rather than noise */}
       {STARS.map((s, i) => (
-        <View key={i} style={[styles.star, { top: s.top, left: s.left, opacity: s.o }]} />
+        <View
+          key={i}
+          style={[
+            styles.star,
+            s.top != null && { top: s.top },
+            s.left != null && { left: s.left },
+            s.bottom != null && { bottom: s.bottom },
+          ]}
+        />
       ))}
 
       {data.variant === 'big3' ? (
-        <View style={styles.body}>
-          <Eyebrow style={styles.eyebrow}>{data.name}’s Big 3</Eyebrow>
-          <Big3Row label="Sun" sign={data.sun} line="the engine" />
-          <Big3Row label="Moon" sign={data.moon} line="the weather" />
-          <Big3Row
-            label="Rising"
-            sign={data.rising}
-            line={data.risingApprox ? 'the doorway (approx.)' : 'the doorway'}
-          />
-        </View>
+        <>
+          <Text style={styles.header}>{data.name.toUpperCase()}'S BIG 3</Text>
+          {BIG3_ROWS.map((row) => (
+            <Big3Row
+              key={row.key}
+              planetGlyph={row.planetGlyph}
+              label={row.label}
+              sign={data[row.key]}
+              line={SHARE_LINES[row.key]}
+              lead={row.key === 'sun'}
+              caveat={row.key === 'rising' && data.risingApprox
+                ? 'Approximate — birth time unknown'
+                : undefined}
+            />
+          ))}
+        </>
       ) : (
-        <View style={styles.body}>
-          <Eyebrow style={styles.eyebrow}>{data.dateLabel}</Eyebrow>
-          {/* Same label + colors the app's other badges use (WALKING shows
-              as "TODAY"), from @/constants/astro. */}
-          <View style={[styles.badge, { borderColor: BADGE_COLORS[data.intensity] }]}>
-            <Text style={[styles.badgeText, { color: BADGE_COLORS[data.intensity] }]}>
-              {badgeLabel(data.intensity)}
-            </Text>
+        <>
+          <Text style={styles.header}>{data.dateLabel.toUpperCase()}</Text>
+          <View style={styles.todayBody}>
+            <View style={[styles.badge, { borderColor: BADGE_COLORS[data.intensity] }]}>
+              <Text style={[styles.badgeText, { color: BADGE_COLORS[data.intensity] }]}>
+                {badgeLabel(data.intensity)}
+              </Text>
+            </View>
+            <Text style={styles.todayHeadline}>{data.headline}</Text>
+            <Text style={styles.todayReading}>{data.body}</Text>
           </View>
-          <Text style={styles.headline}>{data.headline}</Text>
-        </View>
+        </>
       )}
 
-      {/* THE WATERMARK — styled as the card's signature, not a stamp. */}
-      <View style={styles.watermark}>
-        <TriangleMark size={16} color={colors.gold} />
+      <View style={styles.footer}>
+        <TriangleMark size={14} color={card.gold} />
         <Text style={styles.wordmark}>nataljournal.com</Text>
       </View>
     </View>
@@ -75,60 +116,161 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
 
 ShareCard.displayName = 'ShareCard';
 
-function Big3Row({ label, sign, line }: { label: string; sign: string; line: string }) {
+function Big3Row({
+  planetGlyph, label, sign, line, lead, caveat,
+}: {
+  planetGlyph: string;
+  label: string;
+  sign: string;
+  line: string;
+  lead?: boolean;
+  caveat?: string;
+}) {
+  const glyph = signGlyph(sign);
   return (
-    <View style={styles.row}>
-      <Text style={styles.rowLabel}>{label}</Text>
-      <Text style={styles.rowSign}>{sign}</Text>
-      <Text style={styles.rowLine}>{line}</Text>
+    <View style={styles.section}>
+      <Text style={styles.catLabel}>{planetGlyph} {label}</Text>
+      <Text style={styles.desc}>{line}</Text>
+      <View style={styles.signRow}>
+        {glyph ? (
+          <Text style={[styles.signGlyph, lead && styles.signGlyphLead]}>{glyph + TXT}</Text>
+        ) : null}
+        <Text style={[styles.signName, lead && styles.signNameLead]}>{sign}</Text>
+      </View>
+      {caveat && <Text style={styles.caveat}>{caveat}</Text>}
     </View>
   );
 }
 
-// Fixed "random" star positions — hardcoded so every card renders identically.
+// Star positions scaled from the 320×568 mockup to our 360×640 capture size.
 const STARS = [
-  { top: 40, left: 30, o: 0.5 }, { top: 90, left: 300, o: 0.3 },
-  { top: 150, left: 120, o: 0.4 }, { top: 210, left: 330, o: 0.5 },
-  { top: 480, left: 40, o: 0.3 }, { top: 520, left: 280, o: 0.45 },
-  { top: 570, left: 150, o: 0.35 }, { top: 60, left: 200, o: 0.25 },
+  { top: 45, left: 34 },
+  { top: 90, left: 312 },
+  { top: 248, left: 23 },
+  { top: 338, left: 329 },
+  { top: 473, left: 56 },
+  { bottom: 113, left: 289 },
 ];
 
 const styles = StyleSheet.create({
   card: {
     width: 360,
     height: 640,               // 9:16 — story format
-    backgroundColor: colors.bg, // cream — the card is paper, not a night sky
+    backgroundColor: card.bg,
     borderRadius: 0,           // stories are full-bleed; no rounding
-    padding: spacing.xl,
-    justifyContent: 'space-between',
     overflow: 'hidden',
   },
   star: {
-    position: 'absolute', width: 3, height: 3, borderRadius: radius.sm,
-    backgroundColor: colors.gold,
+    position: 'absolute',
+    width: 3,
+    height: 3,
+    borderRadius: radius.pill,
+    backgroundColor: card.goldDot,
+    opacity: 0.6,
   },
-  body: { flex: 1, justifyContent: 'center' },
-  eyebrow: { textAlign: 'center', marginBottom: spacing.xl },
-  row: { alignItems: 'center', marginBottom: spacing.xl - 2 },
-  rowLabel: { fontFamily: fonts.bodyMedium, fontSize: type.small, color: colors.muted },
-  rowSign: {
-    fontFamily: fonts.displayBold, fontSize: 34, color: colors.text, marginVertical: 2,
+  header: {
+    textAlign: 'center',
+    paddingTop: 26,
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    letterSpacing: 3,
+    color: card.gold,
   },
-  rowLine: { fontFamily: fonts.displayItalic, fontSize: type.small, color: colors.accent },
-  // borderColor + text color are set inline from BADGE_COLORS per intensity.
+  section: {
+    alignItems: 'center',
+    paddingTop: 14,
+    paddingHorizontal: 24,
+  },
+  catLabel: {
+    fontFamily: fonts.bodyBold,
+    fontSize: 11,
+    letterSpacing: 3,
+    color: card.gold,
+  },
+  desc: {
+    fontFamily: fonts.body,
+    fontSize: 13,
+    color: card.desc,
+    textAlign: 'center',
+    lineHeight: 18.2,
+    marginTop: 6,
+    marginBottom: 2,
+  },
+  signRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: spacing.sm,
+    marginVertical: 4,
+  },
+  signGlyph: {
+    fontFamily: fonts.body,
+    fontSize: 26,
+    color: card.gold,
+    lineHeight: 34,
+  },
+  signGlyphLead: {
+    fontSize: 32,
+    lineHeight: 42,
+  },
+  signName: {
+    fontFamily: fonts.displayBold,
+    fontSize: 34,
+    color: card.sign,
+    textAlign: 'center',
+  },
+  signNameLead: {
+    fontSize: 42,
+    color: card.signLead,
+  },
+  caveat: {
+    fontFamily: fonts.body,
+    fontSize: 12,
+    color: card.desc,
+    marginTop: spacing.xs,
+    textAlign: 'center',
+  },
+  todayBody: {
+    flex: 1,
+    paddingTop: 14,
+    paddingHorizontal: 24,
+    paddingBottom: 56,
+    gap: spacing.md,
+  },
   badge: {
-    alignSelf: 'center', borderWidth: 1,
-    borderRadius: radius.pill, paddingHorizontal: spacing.md - 2, paddingVertical: spacing.xs + 1,
-    marginBottom: spacing.lg - 2,
+    alignSelf: 'center',
+    borderWidth: 1,
+    borderRadius: radius.pill,
+    paddingHorizontal: spacing.md - 2,
+    paddingVertical: spacing.xs + 1,
   },
   badgeText: { fontFamily: fonts.bodyBold, fontSize: 11, letterSpacing: 2 },
-  headline: {
-    fontFamily: fonts.displayBold, fontSize: type.title, color: colors.text,
-    textAlign: 'center', lineHeight: 36,
+  todayHeadline: {
+    fontFamily: fonts.displayBold,
+    fontSize: 22,
+    color: card.signLead,
+    textAlign: 'center',
+    lineHeight: 30,
   },
-  watermark: { alignItems: 'center', gap: spacing.xs },
+  todayReading: {
+    fontFamily: fonts.body,
+    fontSize: 14,
+    color: card.desc,
+    textAlign: 'center',
+    lineHeight: 21,
+  },
+  footer: {
+    position: 'absolute',
+    bottom: 20,
+    left: 0,
+    right: 0,
+    alignItems: 'center',
+    gap: 4,
+  },
   wordmark: {
-    fontFamily: fonts.bodyBold, letterSpacing: 1, fontSize: type.small, color: colors.text,
+    fontFamily: fonts.bodyBold,
+    fontSize: 12,
+    color: card.sign,
   },
 });
 

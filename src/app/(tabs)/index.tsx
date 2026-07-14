@@ -127,6 +127,7 @@ export default function TodayScreen() {
               data={{
                 variant: 'today',
                 headline: reading.headline ?? 'Today',
+                body: reading.body,
                 intensity: reading.type,
                 dateLabel: headerDate,
               }}
