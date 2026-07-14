@@ -74,37 +74,39 @@ const ShareCard = forwardRef<View, Props>(({ data }, ref) => {
         />
       ))}
 
-      {data.variant === 'big3' ? (
-        <>
-          <Text style={styles.header}>{data.name.toUpperCase()}'S BIG 3</Text>
-          {BIG3_ROWS.map((row) => (
-            <Big3Row
-              key={row.key}
-              planetGlyph={row.planetGlyph}
-              label={row.label}
-              sign={data[row.key]}
-              line={SHARE_LINES[row.key]}
-              lead={row.key === 'sun'}
-              caveat={row.key === 'rising' && data.risingApprox
-                ? 'Approximate — birth time unknown'
-                : undefined}
-            />
-          ))}
-        </>
-      ) : (
-        <>
-          <Text style={styles.header}>{data.dateLabel.toUpperCase()}</Text>
-          <View style={styles.todayBody}>
-            <View style={[styles.badge, { borderColor: BADGE_COLORS[data.intensity] }]}>
-              <Text style={[styles.badgeText, { color: BADGE_COLORS[data.intensity] }]}>
-                {badgeLabel(data.intensity)}
-              </Text>
+      <View style={styles.content}>
+        {data.variant === 'big3' ? (
+          <>
+            <Text style={styles.header}>{data.name.toUpperCase()}'S BIG 3</Text>
+            {BIG3_ROWS.map((row) => (
+              <Big3Row
+                key={row.key}
+                planetGlyph={row.planetGlyph}
+                label={row.label}
+                sign={data[row.key]}
+                line={SHARE_LINES[row.key]}
+                lead={row.key === 'sun'}
+                caveat={row.key === 'rising' && data.risingApprox
+                  ? 'Approximate — birth time unknown'
+                  : undefined}
+              />
+            ))}
+          </>
+        ) : (
+          <>
+            <Text style={styles.header}>{data.dateLabel.toUpperCase()}</Text>
+            <View style={styles.todayBody}>
+              <View style={[styles.badge, { borderColor: BADGE_COLORS[data.intensity] }]}>
+                <Text style={[styles.badgeText, { color: BADGE_COLORS[data.intensity] }]}>
+                  {badgeLabel(data.intensity)}
+                </Text>
+              </View>
+              <Text style={styles.todayHeadline}>{data.headline}</Text>
+              <Text style={styles.todayReading}>{data.body}</Text>
             </View>
-            <Text style={styles.todayHeadline}>{data.headline}</Text>
-            <Text style={styles.todayReading}>{data.body}</Text>
-          </View>
-        </>
-      )}
+          </>
+        )}
+      </View>
 
       <View style={styles.footer}>
         <TriangleMark size={14} color={card.gold} />
@@ -168,30 +170,41 @@ const styles = StyleSheet.create({
     backgroundColor: card.goldDot,
     opacity: 0.6,
   },
+  content: {
+    flex: 1,
+    width: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 24,
+    paddingBottom: 48,
+  },
   header: {
     textAlign: 'center',
-    paddingTop: 26,
     fontFamily: fonts.bodyBold,
     fontSize: 11,
     letterSpacing: 3,
     color: card.gold,
+    alignSelf: 'center',
   },
   section: {
     alignItems: 'center',
+    alignSelf: 'stretch',
     paddingTop: 14,
-    paddingHorizontal: 24,
   },
   catLabel: {
     fontFamily: fonts.bodyBold,
     fontSize: 11,
     letterSpacing: 3,
     color: card.gold,
+    textAlign: 'center',
+    alignSelf: 'center',
   },
   desc: {
     fontFamily: fonts.body,
     fontSize: 13,
     color: card.desc,
     textAlign: 'center',
+    alignSelf: 'center',
     lineHeight: 18.2,
     marginTop: 6,
     marginBottom: 2,
@@ -229,12 +242,12 @@ const styles = StyleSheet.create({
     color: card.desc,
     marginTop: spacing.xs,
     textAlign: 'center',
+    alignSelf: 'center',
   },
   todayBody: {
-    flex: 1,
+    alignItems: 'center',
+    alignSelf: 'stretch',
     paddingTop: 14,
-    paddingHorizontal: 24,
-    paddingBottom: 56,
     gap: spacing.md,
   },
   badge: {
@@ -250,6 +263,7 @@ const styles = StyleSheet.create({
     fontSize: 22,
     color: card.signLead,
     textAlign: 'center',
+    alignSelf: 'center',
     lineHeight: 30,
   },
   todayReading: {
@@ -257,6 +271,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: card.desc,
     textAlign: 'center',
+    alignSelf: 'center',
     lineHeight: 21,
   },
   footer: {
