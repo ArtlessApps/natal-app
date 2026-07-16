@@ -4,10 +4,12 @@ import { supabase } from '@/lib/supabase';
 import type { Chart } from '@/lib/learn';
 import type { Friend } from '@/types/friend';
 
-// PRD §4.5: "Free tier: 3 friends. MVP cap: friends list max 20." No paid
-// tier exists yet, so the free limit is the effective cap; MAX is the hard
-// ceiling for when premium lands.
-export const FREE_FRIEND_LIMIT = 3;
+// MONETIZATION.md §3/§4: free users get 1 Connection; Plus = unlimited up to
+// the hard ceiling. (Internal table/props still say "friends" for now —
+// user-facing copy renames in the Connections pass.)
+export const FREE_CONNECTION_LIMIT = 1;
+/** @deprecated Use FREE_CONNECTION_LIMIT — kept for older call sites. */
+export const FREE_FRIEND_LIMIT = FREE_CONNECTION_LIMIT;
 export const MAX_FRIENDS = 20;
 
 export async function listFriends(): Promise<Friend[]> {

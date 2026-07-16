@@ -22,6 +22,7 @@ import {
 } from '@expo-google-fonts/outfit';
 import { supabase } from '../lib/supabase';
 import { registerForPushNotifications } from '../lib/notifications';
+import { configurePurchases, syncPurchasesUser } from '../lib/subscription';
 import { colors } from '../constants/theme';
 
 // Keep the native splash screen visible until we explicitly hide it below.
@@ -70,6 +71,12 @@ function RootLayout() {
     if (fontsLoaded) SplashScreen.hideAsync();
   }, [fontsLoaded]);
 
+  // 0) RevenueCat — configure once, then keep the RC user id in sync with
+  // the Supabase session (see lib/subscription.ts).
+  useEffect(() => {
+    configurePurchases();
+  }, []);
+
   // 1) Learn the login state, and keep listening for changes. Also resets
   // hasProfile the moment session goes away (right here, inside the same
   // callback that clears it) rather than in a separate effect reacting to
@@ -80,11 +87,14 @@ function RootLayout() {
       setSession(data.session);
       if (!data.session) setHasProfile(null);
       setLoading(false);
+      // Anonymous → known user (or clear on cold start with no session).
+      syncPurchasesUser(data.session?.user.id ?? null);
     });
     // Fires on sign-in, sign-out, token refresh — keeps state in sync.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
       setSession(s);
       if (!s) setHasProfile(null);
+      syncPurchasesUser(s?.user.id ?? null);
     });
     return () => sub.subscription.unsubscribe();
   }, []);

@@ -10,9 +10,12 @@ import { Body, Button, Eyebrow, Title } from '@/components/ui';
 import { expandSign, PLANET_GLYPHS } from '@/constants/astro';
 import { lessonIdForBig3Key, lessonIdForPlanetKey } from '@/constants/lessons';
 import { getChart, getCompletedLessonIds, resolvePlacement, type Chart, type Placementish } from '@/lib/learn';
+import { useIsPlus } from '@/lib/subscription';
 import { supabase } from '@/lib/supabase';
 import Big3Cards, { type Big3Key } from '@/components/big3-cards';
 import ChartWheel from '@/components/chart-wheel';
+import LockedFeatureRow from '@/components/locked-feature-row';
+import PaywallSheet, { type PaywallSource } from '@/components/PaywallSheet';
 import PlacementRow from '@/components/placement-row';
 import ShareCard from '@/components/share-card';
 import { useShareCard } from '@/lib/use-share-card';
@@ -27,11 +30,13 @@ const PLANET_KEYS = [
 
 export default function ChartScreen() {
   const router = useRouter();
+  const isPlus = useIsPlus();
   const [name, setName] = useState('');
   const [chart, setChart] = useState<Chart | null>(null);
   const [birthTimeKnown, setBirthTimeKnown] = useState(true);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [paywallSource, setPaywallSource] = useState<PaywallSource | null>(null);
   const { cardRef, share, sharing } = useShareCard();
 
   const load = useCallback(() => {
@@ -103,8 +108,20 @@ export default function ChartScreen() {
           const lessonId = lessonIdForPlanetKey(planetKey);
           if (lessonId) router.push(`/learn/${lessonId}`);
         }}
-        onHousePress={() => router.push('/learn/paywall?reason=houses')}
+        // Houses = full-chart interpretation beyond Big 3 (MONETIZATION §4.3).
+        onHousePress={() => {
+          if (isPlus) router.push('/(tabs)/learn');
+          else setPaywallSource('chart_interpretation');
+        }}
       />
+
+      {!isPlus && (
+        <LockedFeatureRow
+          title="Transit calendar"
+          subtitle="See what’s coming through your chart — Natal Plus."
+          onPress={() => setPaywallSource('transit_calendar')}
+        />
+      )}
 
       <Eyebrow style={styles.big3Label}>Your Big 3</Eyebrow>
       <Big3Cards
@@ -155,6 +172,12 @@ export default function ChartScreen() {
           }}
         />
       </View>
+
+      <PaywallSheet
+        visible={paywallSource != null}
+        source={paywallSource ?? 'chart_interpretation'}
+        onClose={() => setPaywallSource(null)}
+      />
     </ScrollView>
   );
 }

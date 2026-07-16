@@ -8,6 +8,9 @@ import { colors, spacing } from '@/constants/theme';
 import { Caption, Tagline, Title } from '@/components/ui';
 import JournalEntryRow from '@/components/journal-entry-row';
 import JournalFilterBar, { EMPTY_FILTERS, type JournalFilters as Filters } from '@/components/journal-filters';
+import LockedFeatureRow from '@/components/locked-feature-row';
+import PaywallSheet from '@/components/PaywallSheet';
+import { useIsPlus } from '@/lib/subscription';
 import type { JournalEntry } from '@/types/journal';
 
 function matches(entry: JournalEntry, filters: Filters): boolean {
@@ -20,9 +23,11 @@ function matches(entry: JournalEntry, filters: Filters): boolean {
 
 export default function JournalScreen() {
   const router = useRouter();
+  const isPlus = useIsPlus();
   const [entries, setEntries] = useState<JournalEntry[] | null>(null);
   const [error, setError] = useState('');
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
+  const [paywall, setPaywall] = useState(false);
 
   const load = useCallback(() => {
     supabase
@@ -51,6 +56,13 @@ export default function JournalScreen() {
           <>
             <Title>Journal</Title>
             <Caption style={styles.privacy}>Your journal is never shared or sold.</Caption>
+            {!isPlus && (
+              <LockedFeatureRow
+                title="Pattern insights"
+                subtitle="See themes across your entries — Natal Plus."
+                onPress={() => setPaywall(true)}
+              />
+            )}
             <JournalFilterBar filters={filters} onChange={setFilters} />
           </>
         }
@@ -70,6 +82,12 @@ export default function JournalScreen() {
         }
       />
       {!!error && <Caption style={styles.error}>{error}</Caption>}
+
+      <PaywallSheet
+        visible={paywall}
+        source="pattern_insights"
+        onClose={() => setPaywall(false)}
+      />
     </View>
   );
 }

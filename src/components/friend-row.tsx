@@ -14,7 +14,7 @@ export default function FriendRow({ friend, onPress }: { friend: Friend; onPress
         </Text>
       </View>
       <View style={styles.rowBody}>
-        <Text style={styles.name}>{friend.guest_name ?? 'Friend'}</Text>
+        <Text style={styles.name}>{friend.guest_name ?? 'Connection'}</Text>
         {b3 && (
           <Text style={styles.big3}>
             ☉ {expandSign(b3.sun)} · ☽ {expandSign(b3.moon)} · ↑ {expandSign(b3.rising)}

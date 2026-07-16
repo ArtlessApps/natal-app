@@ -66,7 +66,9 @@ export default function TabLayout() {
       <Tabs.Screen
         name="friends"
         options={{
-          title: "Friends",
+          // User-facing name is Connections (MONETIZATION.md §1).
+          // Route file stays `friends.tsx` to avoid a risky path rename.
+          title: "Connections",
           tabBarIcon: ({ color, size }) => (
             <Ionicons name="people-outline" size={size} color={color} />
           ),

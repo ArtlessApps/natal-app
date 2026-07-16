@@ -27,27 +27,27 @@ export default function FriendsHeader({
 }) {
   return (
     <>
-      <Title>Friends</Title>
-      <Body style={styles.subtitle}>Add someone’s chart and see how you fit together.</Body>
+      <Title>Your Connections</Title>
+      <Body style={styles.subtitle}>Compare charts with a Connection and see how you fit together.</Body>
       {friends !== null && (
-        <Caption style={styles.count}>{count} of {limit} friends</Caption>
+        <Caption style={styles.count}>{count} of {limit} Connections</Caption>
       )}
 
       {friends !== null && (
         <View style={styles.cta}>
+          {/* Stays tappable at the free limit — parent opens the paywall. */}
           <Button
             label="✦  Invite someone to compare"
             onPress={onInvite}
-            disabled={atLimit}
             variant="terracotta"
           />
           {atLimit ? (
             <View>
               <Caption style={styles.limitNote}>
-                You’ve reached the free limit of {limit} friends. Remove one to invite more, or:
+                You’ve used your free Connection. Unlock unlimited with Natal Plus.
               </Caption>
               <Text style={styles.limitLink} onPress={onUpgrade}>
-                Unlock more with Premium →
+                Unlock with Natal Plus →
               </Text>
             </View>
           ) : (

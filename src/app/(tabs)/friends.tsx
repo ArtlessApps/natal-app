@@ -1,7 +1,6 @@
-// Friends tab (PRD §4.5): invite someone to compare charts, or add their
-// details manually. Since Step 8.6 the primary flow is a share link — a
-// pending invite row appears under WAITING until the guest completes the web
-// flow, then flips to COMPARED.
+// Friends tab (PRD §4.5 + MONETIZATION §4.3): invite someone to compare
+// charts, or add their details manually. Free = 1 Connection; adding #2+
+// opens the shared PaywallSheet. Plus raises the cap to MAX_FRIENDS.
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, FlatList, Platform, Share, StyleSheet, View } from 'react-native';
@@ -9,12 +8,18 @@ import { colors, spacing } from '@/constants/theme';
 import { Caption, Tagline } from '@/components/ui';
 import FriendRow from '@/components/friend-row';
 import FriendsHeader from '@/components/friends-header';
+import PaywallSheet from '@/components/PaywallSheet';
 import { WEB_URL } from '@/constants/links';
-import { createInvite, deleteFriend, FREE_FRIEND_LIMIT, listFriends } from '@/lib/friends';
+import {
+  createInvite,
+  deleteFriend,
+  FREE_CONNECTION_LIMIT,
+  listFriends,
+  MAX_FRIENDS,
+} from '@/lib/friends';
+import { useIsPlus } from '@/lib/subscription';
 import type { Friend } from '@/types/friend';
 
-// One place to build + open the invite link, web-aware so the "app in one
-// browser tab" local test works (native uses the OS share sheet).
 async function shareInviteLink(token: string) {
   const message = `Let’s compare birth charts ✦ ${WEB_URL}/invite/${token}`;
   if (Platform.OS === 'web') {
@@ -28,14 +33,16 @@ async function shareInviteLink(token: string) {
 
 export default function FriendsScreen() {
   const router = useRouter();
+  const isPlus = useIsPlus();
   const [friends, setFriends] = useState<Friend[] | null>(null);
   const [error, setError] = useState('');
+  const [paywall, setPaywall] = useState(false);
 
   const load = useCallback(() => {
     setError('');
     listFriends()
       .then((rows) => setFriends(rows))
-      .catch((e) => { setError(e.message ?? 'Could not load friends'); setFriends([]); });
+      .catch((e) => { setError(e.message ?? 'Could not load Connections'); setFriends([]); });
   }, []);
 
   useFocusEffect(load);
@@ -43,14 +50,25 @@ export default function FriendsScreen() {
   const pending = friends?.filter((f) => f.status === 'pending') ?? [];
   const completed = friends?.filter((f) => f.status !== 'pending') ?? [];
   const count = friends?.length ?? 0;
-  const atLimit = count >= FREE_FRIEND_LIMIT; // pendings count toward the cap
+  // Free: 1 Connection. Plus: hard ceiling. Pendings count toward the cap.
+  const limit = isPlus ? MAX_FRIENDS : FREE_CONNECTION_LIMIT;
+  const atLimit = count >= limit;
+
+  function gateOr(run: () => void) {
+    // Button stays visible at the free limit — tap opens paywall (MONETIZATION §4).
+    if (atLimit && !isPlus) {
+      setPaywall(true);
+      return;
+    }
+    run();
+  }
 
   async function inviteSomeone() {
     setError('');
     try {
-      const invite = await createInvite(); // token comes back from Postgres
+      const invite = await createInvite();
       await shareInviteLink(invite.token);
-      load(); // pending row appears immediately
+      load();
     } catch (e: any) {
       setError(e.message ?? 'Could not create invite');
     }
@@ -78,13 +96,13 @@ export default function FriendsScreen() {
             pending={pending}
             completedCount={completed.length}
             count={count}
-            limit={FREE_FRIEND_LIMIT}
-            atLimit={atLimit}
-            onInvite={inviteSomeone}
+            limit={limit}
+            atLimit={atLimit && !isPlus}
+            onInvite={() => gateOr(inviteSomeone)}
             onResend={resend}
             onRemove={removeRow}
-            onAddManually={() => router.push('/friends/add')}
-            onUpgrade={() => router.push('/learn/paywall?reason=friends')}
+            onAddManually={() => gateOr(() => router.push('/friends/add'))}
+            onUpgrade={() => setPaywall(true)}
           />
         }
         renderItem={({ item }) => (
@@ -101,6 +119,12 @@ export default function FriendsScreen() {
         }
       />
       {!!error && <Caption style={styles.error}>{error}</Caption>}
+
+      <PaywallSheet
+        visible={paywall}
+        source="connection_limit"
+        onClose={() => setPaywall(false)}
+      />
     </View>
   );
 }

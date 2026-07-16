@@ -6,14 +6,18 @@ import { useRouter } from 'expo-router';
 import { colors, spacing } from '@/constants/theme';
 import { Tagline, Title } from '@/components/ui';
 import { fetchNatalChart } from '@/lib/api';
-import { addFriend, FREE_FRIEND_LIMIT, listFriends } from '@/lib/friends';
+import { addFriend, FREE_CONNECTION_LIMIT, listFriends, MAX_FRIENDS } from '@/lib/friends';
+import { useIsPlus } from '@/lib/subscription';
 import BirthDataForm, { type BirthDataValues } from '@/components/birth-data-form';
+import PaywallSheet from '@/components/PaywallSheet';
 import type { Chart } from '@/lib/learn';
 
 export default function AddFriend() {
   const router = useRouter();
+  const isPlus = useIsPlus();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [paywall, setPaywall] = useState(false);
 
   function goBack() {
     if (router.canGoBack()) router.back();
@@ -23,10 +27,15 @@ export default function AddFriend() {
   async function handleSubmit(v: BirthDataValues) {
     setBusy(true); setError('');
     try {
-      // Re-check the cap server-side-of-truth (guards a direct deep link).
+      // Re-check the cap (guards a direct deep link past the tab gate).
       const existing = await listFriends();
-      if (existing.length >= FREE_FRIEND_LIMIT) {
-        throw new Error(`Free limit is ${FREE_FRIEND_LIMIT} friends.`);
+      const limit = isPlus ? MAX_FRIENDS : FREE_CONNECTION_LIMIT;
+      if (existing.length >= limit) {
+        if (!isPlus) {
+          setPaywall(true);
+          return;
+        }
+        throw new Error(`You’ve reached the maximum of ${MAX_FRIENDS} Connections.`);
       }
       const { chart } = await fetchNatalChart({
         name: v.name, date: v.date, time: v.time, lat: v.lat, lng: v.lng,
@@ -48,10 +57,15 @@ export default function AddFriend() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Pressable onPress={goBack}><Text style={styles.back}>← Friends</Text></Pressable>
-      <Title>Add a friend</Title>
+      <Pressable onPress={goBack}><Text style={styles.back}>← Connections</Text></Pressable>
+      <Title>Add a Connection</Title>
       <Tagline style={styles.sub}>Their birth details stay private to you.</Tagline>
       <BirthDataForm submitLabel="Compare charts" busy={busy} error={error} onSubmit={handleSubmit} />
+      <PaywallSheet
+        visible={paywall}
+        source="connection_limit"
+        onClose={() => setPaywall(false)}
+      />
     </ScrollView>
   );
 }

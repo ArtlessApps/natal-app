@@ -1,22 +1,25 @@
 // Learn tab (PRD §4.4): guided path from Big 3 → full chart fluency.
-// Levels 1–2 are free and read from the user's own chart; Levels 3–5 are
-// locked behind a paywall stub. Progress is framed as
-// "% of your chart you can read".
+// Levels 1–2 are free; Levels 3–5 lock behind Natal Plus (MONETIZATION §4.3).
+// Progress is framed as "% of your chart you can read".
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, spacing, type } from '@/constants/theme';
 import { Body, Caption, Card, Title } from '@/components/ui';
 import LearnLevel from '@/components/learn-level';
+import PaywallSheet from '@/components/PaywallSheet';
 import { ALL_UNLOCKABLE_LESSONS, LEVELS } from '@/constants/lessons';
 import { getChart, getCompletedLessonIds, type Chart } from '@/lib/learn';
+import { useIsPlus } from '@/lib/subscription';
 
 export default function LearnScreen() {
   const router = useRouter();
+  const isPlus = useIsPlus();
   const [chart, setChart] = useState<Chart | null>(null);
   const [birthTimeKnown, setBirthTimeKnown] = useState(true);
   const [completed, setCompleted] = useState<Set<string>>(new Set());
   const [loading, setLoading] = useState(true);
+  const [paywall, setPaywall] = useState(false);
 
   const load = useCallback(() => {
     let active = true;
@@ -63,14 +66,21 @@ export default function LearnScreen() {
       {LEVELS.map((level) => (
         <LearnLevel
           key={level.id}
-          level={level}
+          // Plus unlocks Levels 3–5; catalog `locked` flag is the free-tier default.
+          level={{ ...level, locked: level.locked && !isPlus }}
           chart={chart}
           birthTimeKnown={birthTimeKnown}
           completed={completed}
           onPressLesson={(lessonId) => router.push(`/learn/${lessonId}`)}
-          onPressLock={() => router.push(`/learn/paywall?reason=${level.id}`)}
+          onPressLock={() => setPaywall(true)}
         />
       ))}
+
+      <PaywallSheet
+        visible={paywall}
+        source="learn_level"
+        onClose={() => setPaywall(false)}
+      />
     </ScrollView>
   );
 }

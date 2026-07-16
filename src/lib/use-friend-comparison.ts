@@ -29,7 +29,7 @@ export function useFriendComparison(id: string) {
         if (!active) return;
         // A pending invite has no chart yet — treat it like a missing row.
         if (!f || f.status === 'pending' || !f.guest_chart_json || !f.guest_name) {
-          setError('Friend not found.'); return;
+          setError('Connection not found.'); return;
         }
         setFriend(f);
         if (owner) {
@@ -61,7 +61,7 @@ export function useFriendComparison(id: string) {
       return;
     }
     const lines = [
-      `${ownerName} & ${friend.guest_name ?? 'Friend'} — our charts, compared on Natal`,
+      `${ownerName} & ${friend.guest_name ?? 'Connection'} — our charts, compared on Natal`,
       '',
       ...compat.insights.map((i) => `${i.title}: ${i.body}`),
     ];

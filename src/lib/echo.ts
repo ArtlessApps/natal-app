@@ -3,9 +3,33 @@
 //   1. exact — same transit_planet + natal_planet + aspect
 //   2. fallback — same transit_planet + aspect (natal may differ)
 // Max one Echo per day; never the entry written today.
+//
+// Free tier (MONETIZATION §4.1): first Echo is full text; later Echoes blur
+// until Natal Plus. We remember which entry was the free one so reopening
+// Today the same day doesn't suddenly lock it.
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { supabase } from '@/lib/supabase';
 import type { DailyDriver } from '@/lib/api';
 import type { JournalEntry } from '@/types/journal';
+
+const FREE_ECHO_ENTRY_KEY = 'natal_free_echo_entry_id';
+
+/**
+ * Decide whether this Echo is full or a blurred tease.
+ * Plus users always get full. Free users get one lifetime free entry id.
+ */
+export async function resolveEchoAccess(
+  entryId: string,
+  isPlus: boolean,
+): Promise<'full' | 'tease'> {
+  if (isPlus) return 'full';
+  const stored = await AsyncStorage.getItem(FREE_ECHO_ENTRY_KEY);
+  if (!stored) {
+    await AsyncStorage.setItem(FREE_ECHO_ENTRY_KEY, entryId);
+    return 'full';
+  }
+  return stored === entryId ? 'full' : 'tease';
+}
 
 export type EchoMatch = {
   entry: JournalEntry;

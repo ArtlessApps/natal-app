@@ -1,27 +1,36 @@
 // The payoff screen. Reads the freshly saved chart and presents
 // Sun / Moon / Rising. Also the perfect moment to ask for
 // notification permission (PRD 4.1) — maximum delight = best opt-in rate.
+// After Big 3, a one-time soft Natal Plus paywall (MONETIZATION §4.2).
 import { useEffect, useState } from 'react';
 import { View, StyleSheet, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '@/lib/supabase';
 import { registerForPushNotifications } from '@/lib/notifications';
+import {
+  hasSeenOnboardingPaywall,
+  markOnboardingPaywallSeen,
+} from '@/lib/onboarding-paywall';
+import { useIsPlus } from '@/lib/subscription';
 import { colors, spacing } from '@/constants/theme';
 import { Button, Eyebrow } from '@/components/ui';
 import { expandSign } from '@/constants/astro';
 import { lessonIdForBig3Key } from '@/constants/lessons';
 import Big3Cards, { type Big3Key } from '@/components/big3-cards';
+import PaywallSheet from '@/components/PaywallSheet';
 import ShareCard from '@/components/share-card';
 import { useShareCard } from '@/lib/use-share-card';
 
 export default function Reveal() {
   const router = useRouter();
+  const isPlus = useIsPlus();
   const [big3, setBig3] = useState<{ sun: string; moon: string; rising: string } | null>(null);
   const [name, setName] = useState('');
   const [timeKnown, setTimeKnown] = useState(true);
   // True once we've asked (or skipped) — CTA stays disabled until then so
   // the permission prompt isn't racing the navigation away from this screen.
   const [pushReady, setPushReady] = useState(false);
+  const [paywall, setPaywall] = useState(false);
   const { cardRef, share, sharing } = useShareCard();
 
   useEffect(() => {
@@ -45,6 +54,21 @@ export default function Reveal() {
       .catch((e) => console.warn('[push] register failed', e))
       .finally(() => setPushReady(true));
   }, [big3]);
+
+  async function goToApp() {
+    // Soft paywall once, never blocks onboarding if dismissed.
+    if (!isPlus && !(await hasSeenOnboardingPaywall())) {
+      await markOnboardingPaywallSeen();
+      setPaywall(true);
+      return;
+    }
+    router.replace('/(tabs)');
+  }
+
+  function finishPaywall() {
+    setPaywall(false);
+    router.replace('/(tabs)');
+  }
 
   if (!big3) {
     return (
@@ -76,9 +100,16 @@ export default function Reveal() {
 
       <Button
         label="See today’s sky"
-        onPress={() => router.replace('/(tabs)')}
+        onPress={goToApp}
         disabled={!pushReady}
         style={styles.button}
+      />
+
+      <PaywallSheet
+        visible={paywall}
+        source="onboarding"
+        onClose={finishPaywall}
+        onPurchased={finishPaywall}
       />
 
       {/* Off-screen render target — fully laid out but parked far off-screen. */}

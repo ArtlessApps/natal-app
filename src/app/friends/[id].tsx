@@ -23,7 +23,7 @@ export default function FriendComparison() {
       <View style={[styles.wrap, styles.center]}>
         <Caption style={styles.error}>{error}</Caption>
         <Pressable onPress={() => router.replace('/(tabs)/friends')}>
-          <Text style={styles.back}>← Friends</Text>
+          <Text style={styles.back}>← Connections</Text>
         </Pressable>
       </View>
     );
@@ -39,11 +39,11 @@ export default function FriendComparison() {
 
   // Guaranteed present here (pending/chartless rows bail out above), but the
   // type is nullable since Step 8.6 — fall back defensively for the compiler.
-  const guestName = friend.guest_name ?? 'Friend';
+  const guestName = friend.guest_name ?? 'Connection';
 
   return (
     <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
-      <Pressable onPress={goBack}><Text style={styles.back}>← Friends</Text></Pressable>
+      <Pressable onPress={goBack}><Text style={styles.back}>← Connections</Text></Pressable>
       <Title style={styles.title}>{ownerName} & {guestName}</Title>
 
       <Big3CompareCard
@@ -74,7 +74,7 @@ export default function FriendComparison() {
         />
       ) : (
         <Pressable style={styles.removeLink} onPress={() => setConfirmingDelete(true)}>
-          <Caption style={styles.removeText}>Remove friend</Caption>
+          <Caption style={styles.removeText}>Remove Connection</Caption>
         </Pressable>
       )}
 
