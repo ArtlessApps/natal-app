@@ -273,6 +273,41 @@ def submit_invite(token: str, req: NatalRequest):
     return {"big3": chart["big3"], "inviter_name": inviter_name}
 
 
+def _user_id_from_bearer(authorization: str | None) -> str:
+    """Validate a Supabase access token and return the user's id."""
+    if not authorization or not authorization.lower().startswith("bearer "):
+        raise HTTPException(status_code=401, detail="Missing authorization")
+    token = authorization[7:].strip()
+    if not token:
+        raise HTTPException(status_code=401, detail="Missing authorization")
+
+    client = engine.create_supabase_client()
+    try:
+        res = client.auth.get_user(token)
+    except Exception:  # noqa: BLE001
+        raise HTTPException(status_code=401, detail="Invalid token") from None
+
+    user = res.user
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    return user.id
+
+
+@app.delete("/account")
+def delete_account(authorization: str | None = Header(default=None)):
+    """
+    Permanently delete the signed-in user's account and all associated data.
+    Requires Authorization: Bearer <Supabase access token>.
+    """
+    user_id = _user_id_from_bearer(authorization)
+    client = engine.create_supabase_client()
+    try:
+        client.auth.admin.delete_user(user_id)
+    except Exception as exc:  # noqa: BLE001
+        raise HTTPException(status_code=500, detail="Could not delete account") from exc
+    return {"ok": True}
+
+
 @app.post("/cron/daily-push")
 def cron_daily_push(
     authorization: str | None = Header(default=None),

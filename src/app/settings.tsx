@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { colors, spacing } from '@/constants/theme';
 import { Body, Caption, Card, Eyebrow, Title } from '@/components/ui';
 import ConfirmDelete from '@/components/confirm-delete';
+import { deleteAccount as deleteAccountOnServer } from '@/lib/api';
 import { supabase } from '@/lib/supabase';
 
 type Profile = {
@@ -29,6 +30,8 @@ export default function Settings() {
   const [error, setError] = useState('');
   const [confirmingSignOut, setConfirmingSignOut] = useState(false);
   const [signingOut, setSigningOut] = useState(false);
+  const [confirmingDeleteAccount, setConfirmingDeleteAccount] = useState(false);
+  const [deletingAccount, setDeletingAccount] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -60,6 +63,22 @@ export default function Settings() {
     setSigningOut(true);
     await supabase.auth.signOut();
     setSigningOut(false);
+  }
+
+  async function deleteAccount() {
+    setDeletingAccount(true);
+    setError('');
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Not signed in.');
+      await deleteAccountOnServer(session.access_token);
+      await supabase.auth.signOut();
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Could not delete account.');
+      setConfirmingDeleteAccount(false);
+    } finally {
+      setDeletingAccount(false);
+    }
   }
 
   return (
@@ -97,7 +116,7 @@ export default function Settings() {
             Your journal is never shared or sold.
           </Caption>
 
-          <View style={styles.signOutSection}>
+          <View style={styles.accountActionsSection}>
             {confirmingSignOut ? (
               <ConfirmDelete
                 message="Sign out of Natal on this device?"
@@ -109,6 +128,20 @@ export default function Settings() {
             ) : (
               <Pressable onPress={() => setConfirmingSignOut(true)}>
                 <Text style={styles.signOutLink}>Sign out</Text>
+              </Pressable>
+            )}
+
+            {confirmingDeleteAccount ? (
+              <ConfirmDelete
+                message="Delete your Natal account? This permanently removes your profile, journal, and all saved data. This can’t be undone."
+                confirmLabel={deletingAccount ? 'Deleting…' : 'Delete account'}
+                busy={deletingAccount}
+                onConfirm={deleteAccount}
+                onCancel={() => setConfirmingDeleteAccount(false)}
+              />
+            ) : (
+              <Pressable onPress={() => setConfirmingDeleteAccount(true)}>
+                <Text style={styles.deleteAccountLink}>Delete account</Text>
               </Pressable>
             )}
           </View>
@@ -128,6 +161,7 @@ const styles = StyleSheet.create({
   rowLabel: { marginTop: spacing.md },
   rowValue: { marginTop: spacing.xs },
   privacy: { lineHeight: 20 },
-  signOutSection: { marginTop: spacing.xxl, alignItems: 'center' },
+  accountActionsSection: { marginTop: spacing.xxl, alignItems: 'center', gap: spacing.lg },
   signOutLink: { color: colors.error, fontSize: 15 },
+  deleteAccountLink: { color: colors.error, fontSize: 15, opacity: 0.75 },
 });

@@ -124,3 +124,12 @@ export async function fetchCompat(
   if (!res.ok) throw new Error(`Comparison failed (${res.status})`);
   return res.json() as Promise<CompatResult>;
 }
+
+// Permanently deletes the signed-in user's account (App Store requirement).
+export async function deleteAccount(accessToken: string): Promise<void> {
+  const res = await fetch(`${API_URL}/account`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  if (!res.ok) throw new Error(`Could not delete account (${res.status})`);
+}
