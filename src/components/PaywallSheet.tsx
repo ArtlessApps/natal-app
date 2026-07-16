@@ -218,7 +218,7 @@ export default function PaywallSheet({ visible, source, onClose, onPurchased }: 
                   <PlanRow
                     label="Annual"
                     priceLabel={`${annual.product.priceString}/yr`}
-                    detail={trialDetail(annual)}
+                    detail={trialDetail(annual, 'yr')}
                     selected={selected === 'annual'}
                     onPress={() => setSelected('annual')}
                   />
@@ -227,7 +227,7 @@ export default function PaywallSheet({ visible, source, onClose, onPurchased }: 
                   <PlanRow
                     label="Monthly"
                     priceLabel={`${monthly.product.priceString}/mo`}
-                    detail="No trial"
+                    detail={trialDetail(monthly, 'mo')}
                     selected={selected === 'monthly'}
                     onPress={() => setSelected('monthly')}
                   />
@@ -295,16 +295,16 @@ function PlanRow({
 }
 
 /** Trial line built from StoreKit intro metadata + localized price string. */
-function trialDetail(pkg: PurchasesPackage): string {
+function trialDetail(pkg: PurchasesPackage, period: 'yr' | 'mo'): string {
   const intro = pkg.product.introPrice;
   if (intro && intro.price === 0) {
     const unit = intro.periodUnit.toLowerCase();
     const n = intro.periodNumberOfUnits;
     const unitLabel = n === 1 ? unit : `${unit}s`;
     // e.g. "7 days free, then $39.99/yr. Cancel anytime."
-    return `${n} ${unitLabel} free, then ${pkg.product.priceString}/yr. Cancel anytime.`;
+    return `${n} ${unitLabel} free, then ${pkg.product.priceString}/${period}. Cancel anytime.`;
   }
-  return `${pkg.product.priceString}/yr. Cancel anytime.`;
+  return `${pkg.product.priceString}/${period}. Cancel anytime.`;
 }
 
 function ctaLabel(pkg: PurchasesPackage | null): string {

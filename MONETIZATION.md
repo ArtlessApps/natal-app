@@ -28,7 +28,7 @@ paywall greed and opaque billing. Clean pricing is part of our brand, alongside
 
 | Plan | Price | Notes |
 |---|---|---|
-| Monthly | **$5.99/mo** | No trial |
+| Monthly | **$5.99/mo** | **7-day free trial** |
 | Annual | **$39.99/yr** (~$3.33/mo) | **7-day free trial** — the plan we push |
 
 - Subscription name: **Natal Plus**.

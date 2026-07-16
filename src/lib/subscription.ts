@@ -58,7 +58,9 @@ export async function syncPurchasesUser(userId: string | null): Promise<void> {
     if (!(await Purchases.isConfigured())) return;
     if (userId) {
       await Purchases.logIn(userId);
-    } else {
+    } else if (!(await Purchases.isAnonymous())) {
+      // RevenueCat throws if logOut() is called while already anonymous
+      // (the default state on first boot / before sign-in).
       await Purchases.logOut();
     }
   } catch (e) {
