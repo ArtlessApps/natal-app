@@ -15,16 +15,19 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     icon: './assets/images/icon.png',
     bundleIdentifier: 'com.artlessapps.natal',
     supportsTablet: false,
+    usesAppleSignIn: true,
     config: {
       usesNonExemptEncryption: false,
     },
     infoPlist: {
       UIBackgroundModes: ['remote-notification'],
+      // Lets the system Sign in with Apple button use the device locale.
+      CFBundleAllowMixedLocalizations: true,
     },
   },
   android: {
     adaptiveIcon: {
-      backgroundColor: '#E6F4FE',
+      backgroundColor: '#E8C4A8',
       foregroundImage: './assets/images/android-icon-foreground.png',
       backgroundImage: './assets/images/android-icon-background.png',
       monochromeImage: './assets/images/android-icon-monochrome.png',
@@ -37,12 +40,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
   },
   plugins: [
     'expo-router',
+    'expo-apple-authentication',
     [
       'expo-splash-screen',
       {
         backgroundColor: '#faf7f2',
         image: './assets/images/splash-icon.png',
-        imageWidth: 76,
+        imageWidth: 180,
       },
     ],
     [

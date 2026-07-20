@@ -2,12 +2,13 @@
 // here (not on Today), with room to grow into birth-data edits, notifications,
 // and legal links.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { colors, spacing } from '@/constants/theme';
 import { Body, Caption, Card, Eyebrow, Title } from '@/components/ui';
 import ConfirmDelete from '@/components/confirm-delete';
 import { deleteAccount as deleteAccountOnServer } from '@/lib/api';
+import { PRIVACY_URL } from '@/constants/links';
 import { supabase } from '@/lib/supabase';
 
 type Profile = {
@@ -115,6 +116,9 @@ export default function Settings() {
           <Caption style={styles.privacy}>
             Your journal is never shared or sold.
           </Caption>
+          <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} style={styles.privacyLinkWrap}>
+            <Text style={styles.privacyLink}>Privacy Policy</Text>
+          </Pressable>
 
           <View style={styles.accountActionsSection}>
             {confirmingSignOut ? (
@@ -161,6 +165,8 @@ const styles = StyleSheet.create({
   rowLabel: { marginTop: spacing.md },
   rowValue: { marginTop: spacing.xs },
   privacy: { lineHeight: 20 },
+  privacyLinkWrap: { marginTop: spacing.sm },
+  privacyLink: { color: colors.accent, fontSize: 15 },
   accountActionsSection: { marginTop: spacing.xxl, alignItems: 'center', gap: spacing.lg },
   signOutLink: { color: colors.error, fontSize: 15 },
   deleteAccountLink: { color: colors.error, fontSize: 15, opacity: 0.75 },

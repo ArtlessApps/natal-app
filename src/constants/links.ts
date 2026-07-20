@@ -6,3 +6,6 @@ export const WEB_URL = process.env.EXPO_PUBLIC_WEB_URL ?? 'http://localhost:8081
 export const APP_STORE_URL = '';
 // While true, the locked screen shows early-access copy instead of a dead link.
 export const TESTFLIGHT_MODE = true;
+
+// Legal pages on the marketing site (App Store + in-app Settings).
+export const PRIVACY_URL = 'https://nataljournal.com/privacy';

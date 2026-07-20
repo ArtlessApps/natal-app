@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { View, TextInput, ScrollView, StyleSheet, Switch } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
@@ -18,6 +18,23 @@ export default function Onboarding() {
   const [place, setPlace] = useState<Place | null>(null);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  // Prefill display name from Sign in with Apple (only present on first auth).
+  useEffect(() => {
+    let cancelled = false;
+    void (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (cancelled || !user) return;
+      const meta = user.user_metadata ?? {};
+      const fromApple =
+        (typeof meta.full_name === 'string' && meta.full_name.trim()) ||
+        [meta.given_name, meta.family_name].filter(Boolean).join(' ').trim();
+      if (fromApple) setName((prev) => prev || fromApple);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   // Search cities via Nominatim (OpenStreetMap). Free, no key.
   async function searchPlaces() {
