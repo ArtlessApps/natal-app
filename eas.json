@@ -18,7 +18,8 @@
         "EXPO_PUBLIC_SUPABASE_URL": "https://dwowzsmodoekidixvhrf.supabase.co",
         "EXPO_PUBLIC_SUPABASE_ANON_KEY": "sb_publishable__RTEC-Ree-WN-JHd-x06rw_7nG6KlNF",
         "EXPO_PUBLIC_API_URL": "https://natal-app-production.up.railway.app",
-        "EXPO_PUBLIC_WEB_URL": "https://app.nataljournal.com"
+        "EXPO_PUBLIC_WEB_URL": "https://app.nataljournal.com",
+        "EXPO_PUBLIC_REVENUECAT_APPLE_API_KEY": "appl_UcvFPuyvKeBnYlHTaubyXSPaqfl"
       }
     }
   },

@@ -5,17 +5,23 @@ import { supabase } from '../lib/supabase';
 import { fetchNatalChart } from '../lib/api';
 import { colors, fonts, spacing, type } from '../constants/theme';
 import { Body, Button, Caption, Eyebrow, Tagline, Title } from '../components/ui';
-import PlaceSearch, { type Place } from '../components/place-search';
+import PlaceSearch from '../components/place-search';
+import { isValidBirthDate, validateBirthDate } from '../lib/birth-date';
+import { searchPlaces, type Place } from '../lib/places';
 
 export default function Onboarding() {
   const router = useRouter();
   const [name, setName] = useState('');
   const [date, setDate] = useState('');            // YYYY-MM-DD
+  const [dateTouched, setDateTouched] = useState(false);
   const [time, setTime] = useState('');            // HH:MM
   const [timeUnknown, setTimeUnknown] = useState(false);
   const [placeQuery, setPlaceQuery] = useState('');
   const [placeResults, setPlaceResults] = useState<Place[]>([]);
   const [place, setPlace] = useState<Place | null>(null);
+  const [placeSearching, setPlaceSearching] = useState(false);
+  const [placeSearched, setPlaceSearched] = useState(false);
+  const [placeError, setPlaceError] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -36,37 +42,41 @@ export default function Onboarding() {
     };
   }, []);
 
-  // Search cities via Nominatim (OpenStreetMap). Free, no key.
-  async function searchPlaces() {
-    if (placeQuery.trim().length < 3) return;
-    const url =
-      `https://nominatim.openstreetmap.org/search?format=json&limit=5&q=` +
-      encodeURIComponent(placeQuery);
-    const res = await fetch(url, { headers: { 'Accept-Language': 'en' } });
-    const rows = await res.json();
-    setPlaceResults(
-      rows.map((r: any) => ({
-        label: r.display_name,
-        lat: parseFloat(r.lat),
-        lng: parseFloat(r.lon),
-      }))
-    );
+  async function onSearchPlaces() {
+    if (placeQuery.trim().length < 2) return;
+    setPlaceSearching(true);
+    setPlaceError('');
+    setPlaceSearched(true);
+    try {
+      const results = await searchPlaces(placeQuery);
+      setPlaceResults(results);
+      // Clear a prior selection if the user is searching again.
+      setPlace(null);
+    } catch (e: any) {
+      setPlaceResults([]);
+      setPlaceError(e?.message ?? 'Place search failed. Try again.');
+    } finally {
+      setPlaceSearching(false);
+    }
   }
+
+  const dateError = dateTouched ? validateBirthDate(date) : null;
 
   const valid =
     name.trim().length > 0 &&
-    /^\d{4}-\d{2}-\d{2}$/.test(date) &&
+    isValidBirthDate(date) &&
     (timeUnknown || /^\d{2}:\d{2}$/.test(time)) &&
     place !== null;
 
   async function submit() {
-    if (!valid || !place) return;
+    setDateTouched(true);
+    if (!isValidBirthDate(date) || !place || !valid) return;
     setBusy(true); setError('');
     try {
       // 1) Ask YOUR engine for the chart (+ derived timezone)
       const { chart, tz_str } = await fetchNatalChart({
         name: name.trim(),
-        date,
+        date: date.trim(),
         time: timeUnknown ? null : time,
         lat: place.lat,
         lng: place.lng,
@@ -77,7 +87,7 @@ export default function Onboarding() {
       const { error: dbError } = await supabase.from('profiles').upsert({
         id: user!.id,
         name: name.trim(),
-        birth_date: date,
+        birth_date: date.trim(),
         birth_time: timeUnknown ? null : time,
         birth_place_label: place.label,
         lat: place.lat,
@@ -107,8 +117,21 @@ export default function Onboarding() {
         placeholder="Your name" placeholderTextColor={colors.muted} />
 
       <Eyebrow style={styles.label}>Birth date</Eyebrow>
-      <TextInput style={styles.input} value={date} onChangeText={setDate}
-        placeholder="1990-06-15" placeholderTextColor={colors.muted} />
+      <TextInput
+        style={[styles.input, !!dateError && styles.inputError]}
+        value={date}
+        onChangeText={setDate}
+        onBlur={() => setDateTouched(true)}
+        placeholder="1990-06-15"
+        placeholderTextColor={colors.muted}
+        keyboardType="numbers-and-punctuation"
+        autoCorrect={false}
+        autoCapitalize="none"
+      />
+      {!!dateError && <Caption style={styles.fieldError}>{dateError}</Caption>}
+      {!dateError && !dateTouched && (
+        <Caption style={styles.hint}>Format: YYYY-MM-DD</Caption>
+      )}
 
       <View style={styles.row}>
         <Body style={styles.switchLabel}>I don’t know my birth time</Body>
@@ -128,11 +151,14 @@ export default function Onboarding() {
 
       <PlaceSearch
         query={placeQuery}
-        onQueryChange={setPlaceQuery}
-        onSearch={searchPlaces}
+        onQueryChange={(v) => { setPlaceQuery(v); setPlaceError(''); }}
+        onSearch={onSearchPlaces}
         results={placeResults}
         selected={place}
         onSelect={(p) => { setPlace(p); setPlaceResults([p]); }}
+        searching={placeSearching}
+        searched={placeSearched}
+        error={placeError}
       />
 
       <Button
@@ -157,6 +183,9 @@ const styles = StyleSheet.create({
     fontSize: type.body, borderRadius: 12, borderWidth: StyleSheet.hairlineWidth,
     borderColor: colors.border, padding: 16,
   },
+  inputError: { borderColor: colors.error, borderWidth: 1 },
+  hint: { marginTop: spacing.xs },
+  fieldError: { color: colors.error, marginTop: spacing.xs },
   row: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: spacing.md },
   note: { marginTop: spacing.sm },
   submit: { marginTop: spacing.xl },

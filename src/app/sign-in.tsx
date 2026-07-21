@@ -1,11 +1,10 @@
 // This is the "exemplar" screen — the visual reference for how every other
 // screen should feel.
 //
-//   • Brand moment up top: gold triangle, NATAL wordmark (Outfit Bold,
-//     wide letterspacing), tagline in Playfair italic
+//   • Brand moment up top: NATAL wordmark (Outfit Bold, wide letterspacing),
+//     tagline in Playfair italic
 //   • Sign in with Apple (iOS) is the primary path for App Review + users
 //   • Email OTP remains as a secondary option
-//   • The Horizon divider separates brand from action
 
 import { useEffect, useState } from 'react';
 import {
@@ -20,7 +19,7 @@ import * as AppleAuthentication from 'expo-apple-authentication';
 import { supabase } from '@/lib/supabase';
 import { isAppleSignInAvailable, signInWithApple } from '@/lib/auth';
 import { colors, fonts, radius, spacing, type } from '@/constants/theme';
-import { Body, Button, Caption, Horizon, Tagline, TriangleMark } from '@/components/ui';
+import { Body, Button, Caption, Tagline } from '@/components/ui';
 
 export default function SignIn() {
   const [email, setEmail] = useState('');
@@ -87,12 +86,9 @@ export default function SignIn() {
     >
       {/* ---- Brand block ---- */}
       <View style={styles.brand}>
-        <TriangleMark size={18} color={colors.gold} />
         <Text style={styles.wordmark}>NATAL</Text>
         <Tagline>A mirror, not a map.</Tagline>
       </View>
-
-      <Horizon />
 
       {appleAvailable && phase === 'email' && (
         <>
@@ -169,7 +165,11 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     padding: spacing.xl,
   },
-  brand: { alignItems: 'center', gap: spacing.sm },
+  brand: {
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginBottom: spacing.xl,
+  },
   // The wordmark: geometric sans, heavy weight, wide tracking — matches the logo.
   wordmark: {
     fontFamily: fonts.bodyBold,

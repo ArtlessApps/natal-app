@@ -57,11 +57,13 @@ export default function JournalScreen() {
             <Title>Journal</Title>
             <Caption style={styles.privacy}>Your journal is never shared or sold.</Caption>
             {!isPlus && (
-              <LockedFeatureRow
-                title="Pattern insights"
-                subtitle="See themes across your entries — Natal Plus."
-                onPress={() => setPaywall(true)}
-              />
+              <View style={styles.insights}>
+                <LockedFeatureRow
+                  title="Pattern insights"
+                  subtitle="See themes across your entries — Natal Plus."
+                  onPress={() => setPaywall(true)}
+                />
+              </View>
             )}
             <JournalFilterBar filters={filters} onChange={setFilters} />
           </>
@@ -96,6 +98,7 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
   privacy: { marginTop: spacing.xs, marginBottom: spacing.lg },
+  insights: { marginBottom: spacing.lg },
   spinner: { marginTop: spacing.xxl },
   empty: { textAlign: 'center', marginTop: spacing.xxl },
   error: { color: colors.error, textAlign: 'center', padding: spacing.md },
