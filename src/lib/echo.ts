@@ -64,6 +64,15 @@ const ASPECT_PAST: Record<string, string> = {
   opposition: 'opposed',
 };
 
+// Present-tense verbs for the empty-state preview ("Next time Mars squares…").
+const ASPECT_PRESENT: Record<string, string> = {
+  conjunction: 'conjuncts',
+  sextile: 'sextiles',
+  square: 'squares',
+  trine: 'trines',
+  opposition: 'opposes',
+};
+
 /** Lead-in copy naming the recurring transit, e.g. "Last time Mars squared your Sun". */
 export function echoLeadIn(driver: DailyDriver): string {
   const planet = driver.transit_planet;
@@ -72,6 +81,16 @@ export function echoLeadIn(driver: DailyDriver): string {
     return `Last time ${planet} ${verb} your ${driver.natal_planet}`;
   }
   return `Last time ${planet} was in focus`;
+}
+
+/** Future-tense lead-in for first-run preview, e.g. "Next time Mars squares your Sun". */
+export function echoPreviewLeadIn(driver: DailyDriver): string {
+  const planet = driver.transit_planet;
+  if (driver.aspect && driver.natal_planet) {
+    const verb = ASPECT_PRESENT[driver.aspect] ?? driver.aspect;
+    return `Next time ${planet} ${verb} your ${driver.natal_planet}`;
+  }
+  return `Next time ${planet} is in focus`;
 }
 
 /** Find the single best past entry matching today's driver, or null. */

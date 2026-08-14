@@ -1,6 +1,9 @@
 // Echo card on Today (PRD §4.2 + MONETIZATION §4.1): one past entry whose
 // transit tag matches today's. First Echo is free (full text); later Echoes
 // for free users show the real entry blurred with an unlock CTA.
+// No matching past entry → a preview that uses today's real driver, so Echo
+// is visible on first launch. Preview is not a fake journal entry and does
+// not consume the free Echo.
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, StyleSheet, Text, View } from 'react-native';
 import { BlurView } from 'expo-blur';
@@ -9,7 +12,9 @@ import { colors, fonts, radius, spacing, type } from '@/constants/theme';
 import { Button } from '@/components/ui';
 import PaywallSheet from '@/components/PaywallSheet';
 import { transitTag } from '@/constants/astro';
-import { echoLeadIn, findEcho, resolveEchoAccess, type EchoMatch } from '@/lib/echo';
+import {
+  echoLeadIn, echoPreviewLeadIn, findEcho, resolveEchoAccess, type EchoMatch,
+} from '@/lib/echo';
 import { useIsPlus } from '@/lib/subscription';
 import type { DailyDriver } from '@/lib/api';
 
@@ -54,7 +59,9 @@ export default function EchoCard({ userId, entryDate, driver }: Props) {
   if (loading) {
     return <ActivityIndicator color={colors.accent} style={styles.spinner} />;
   }
-  if (!match || !access) return null;
+  if (!match || !access) {
+    return <EchoPreview driver={driver} />;
+  }
 
   const { entry } = match;
   const tag = transitTag(entry.transit_planet, entry.aspect, entry.natal_planet);
@@ -106,6 +113,33 @@ export default function EchoCard({ userId, entryDate, driver }: Props) {
         source="echo_tease"
         onClose={() => setPaywall(false)}
       />
+    </View>
+  );
+}
+
+// First-run / no-history card. Uses today's real driver so a cold launch
+// still shows Echo. Clearly a preview — not a fake journal entry. Replaced
+// by the real match as soon as findEcho has a past tagged entry.
+function EchoPreview({ driver }: { driver: DailyDriver }) {
+  const tag = transitTag(driver.transit_planet, driver.aspect, driver.natal_planet);
+  return (
+    <View style={styles.wrap}>
+      <Text style={styles.label}>ECHO</Text>
+      <Text style={styles.leadIn}>
+        {echoPreviewLeadIn(driver)}, this is where your words come back.
+      </Text>
+      <View style={styles.card}>
+        <Text style={styles.date}>Preview</Text>
+        <Text style={styles.excerpt}>
+          You haven’t written for this transit yet. Answer today’s prompt.
+          When the sky rhymes, Echo will show that entry — dated, tagged, only yours.
+        </Text>
+        {!!tag && (
+          <View style={styles.chip}>
+            <Text style={styles.chipText}>{tag}</Text>
+          </View>
+        )}
+      </View>
     </View>
   );
 }
