@@ -355,6 +355,12 @@ def _passes_cooldown(
         return True
 
     last_fired = date.fromisoformat(rows[0]["last_fired_date"])
+    # Already this date's pick — recomputing must be idempotent. /daily runs on
+    # every app launch and the push cron runs once at ~08:00, so without this
+    # the first call of the day would record the collision and every later call
+    # would skip it, showing a different reading than the push that announced it.
+    if last_fired == target_date:
+        return True
     cooldown_days = PLANET_COOLDOWNS.get(transit_planet, 7)
     return (target_date - last_fired).days >= cooldown_days
 
