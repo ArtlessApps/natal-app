@@ -532,8 +532,31 @@ def compute_daily(
     }
 
 
+def _content_rng(
+    user_id: Optional[str], target_date: Optional[date]
+) -> Optional[random.Random]:
+    """
+    A generator seeded per user per day, so every content lookup for that user
+    on that date picks the same row. /daily runs on each app launch and the
+    push cron runs once at ~08:00, so an unseeded random.choice() reshuffled
+    the headline, body and prompt every time — the push announced words the
+    app then didn't show, and relaunching swapped out the day's prompt.
+
+    Seeding a Random with a string is deterministic across processes (it's
+    hashed with sha512, not affected by PYTHONHASHSEED). Callers that pass no
+    date get None and keep the old per-call randomness.
+    """
+    if target_date is None:
+        return None
+    return random.Random(f"{user_id or 'anon'}:{target_date.isoformat()}")
+
+
 def fetch_collision_content(
-    client: Client, transit_planet: str, natal_planet: str, aspect: str
+    client: Client,
+    transit_planet: str,
+    natal_planet: str,
+    aspect: str,
+    rng: Optional[random.Random] = None,
 ) -> Optional[dict]:
     """Fetch structured collision content."""
     response = (
@@ -545,15 +568,22 @@ def fetch_collision_content(
         .ilike("transit_planet", transit_planet)
         .ilike("natal_planet", natal_planet)
         .ilike("aspect", aspect)
+        # Postgres makes no order guarantee without this, and a seeded pick is
+        # only reproducible if it indexes into a stable list.
+        .order("id")
         .execute()
     )
     if response.data:
-        return random.choice(response.data)
+        return (rng or random).choice(response.data)
     return None
 
 
 def fetch_walking_content(
-    client: Client, transit_planet: str, sign: Optional[str], phase: Optional[str]
+    client: Client,
+    transit_planet: str,
+    sign: Optional[str],
+    phase: Optional[str],
+    rng: Optional[random.Random] = None,
 ) -> Optional[dict]:
     """Fetch structured walking content."""
     if not sign or not phase:
@@ -567,10 +597,11 @@ def fetch_walking_content(
         .ilike("transit_planet", transit_planet)
         .ilike("sign", sign)
         .ilike("phase", phase)
+        .order("id")
         .execute()
     )
     if response.data:
-        return random.choice(response.data)
+        return (rng or random).choice(response.data)
     return None
 
 
@@ -579,6 +610,7 @@ def resolve_walking_content(
     transit_planet: str,
     sign_name: Optional[str],
     phase: Optional[str],
+    rng: Optional[random.Random] = None,
 ) -> Optional[dict]:
     """
     Look up walking content by planet + actual sign + phase.
@@ -589,11 +621,11 @@ def resolve_walking_content(
     if not phase:
         return None
     if sign_name:
-        row = fetch_walking_content(client, transit_planet, sign_name, phase)
+        row = fetch_walking_content(client, transit_planet, sign_name, phase, rng)
         if row:
             return row
     if phase == "Retrograde":
-        return fetch_walking_content(client, transit_planet, "All", phase)
+        return fetch_walking_content(client, transit_planet, "All", phase, rng)
     return None
 
 
@@ -633,23 +665,31 @@ def build_editorial_paragraph(content: dict) -> str:
     return full_paragraph
 
 
-def lookup_content(driver: dict) -> dict:
+def lookup_content(
+    driver: dict,
+    user_id: Optional[str] = None,
+    target_date: Optional[date] = None,
+) -> dict:
     """
     Fetch content for a compute_daily() driver: content_collisions for
     aspect days (COLLISION/TRANSIT/RIPPLE), content_walking for WALKING days.
+
+    Pass user_id/target_date to keep the wording stable for that user on that
+    day (see _content_rng); without them the pick stays random per call.
 
     Returns:
         { "content_id", "headline", "body", "prompt" }
     """
     client = create_supabase_client()
+    rng = _content_rng(user_id, target_date)
 
     if driver["type"] == "WALKING":
         row = resolve_walking_content(
-            client, driver["transit_planet"], driver.get("sign"), driver.get("phase")
+            client, driver["transit_planet"], driver.get("sign"), driver.get("phase"), rng
         )
     else:
         row = fetch_collision_content(
-            client, driver["transit_planet"], driver["natal_planet"], driver["aspect"]
+            client, driver["transit_planet"], driver["natal_planet"], driver["aspect"], rng
         )
 
     if not row:

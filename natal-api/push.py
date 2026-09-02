@@ -124,7 +124,9 @@ def compute_headline(row: dict, client) -> tuple[str, date]:
         tz_str=row["tz_str"],
     )
     driver = engine.compute_daily(subject, target, user_id=row["id"], client=client)
-    content = engine.lookup_content(driver)
+    # Same user_id/date the app's /daily call uses, so the headline pushed at
+    # 08:00 is the one the app shows when the notification is tapped.
+    content = engine.lookup_content(driver, user_id=row["id"], target_date=target)
     headline = (content.get("headline") or "").strip() or "Your sky for today."
     # Expo push title/body should stay short; PRD caps headline at 90 chars.
     if len(headline) > 90:

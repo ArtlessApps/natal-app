@@ -180,7 +180,9 @@ def daily(req: DailyRequest):
     target = date_type.fromisoformat(req.target_date)
 
     driver = engine.compute_daily(subject, target, user_id=req.user_id)  # the astrology
-    content = engine.lookup_content(driver)            # the words
+    # user_id/target keep the wording stable for this user on this date, so
+    # relaunching the app doesn't swap out the reading or the prompt.
+    content = engine.lookup_content(driver, user_id=req.user_id, target_date=target)
 
     return {
         "type": driver["type"],        # COLLISION / TRANSIT / RIPPLE / WALKING
