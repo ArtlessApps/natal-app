@@ -4,7 +4,7 @@ import { ExpoConfig, ConfigContext } from 'expo/config';
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
-  name: 'natal-app',
+  name: 'Natal Journal',
   slug: 'natal-app',
   version: '1.0.0',
   orientation: 'portrait',

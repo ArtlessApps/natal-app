@@ -111,6 +111,9 @@ export default function SignIn() {
       <View style={styles.brand}>
         <Text style={styles.wordmark}>NATAL</Text>
         <Tagline>A mirror, not a map.</Tagline>
+        <Caption style={styles.pitch}>
+          A private journal, tagged to the transits in your chart.
+        </Caption>
       </View>
 
       {appleAvailable && phase === 'email' && (
@@ -226,6 +229,7 @@ const styles = StyleSheet.create({
     // letterSpacing pads the right of the last letter too; nudge to re-center.
     marginRight: -8,
   },
+  pitch: { textAlign: 'center' },
   appleButton: {
     width: '100%',
     height: 48,

@@ -1,13 +1,14 @@
-// Today tab (PRD 4.2): the daily reading, the "Why?" disclosure, the
-// journal prompt, and Echo (past entry matching today's transit). Loads
-// the signed-in user's saved birth data, asks the API to compute today's
-// reading for it, then renders the result.
+// Reflect tab (PRD 4.2): today's journal prompt, Echo (past entry matching
+// today's transit), then the reading and its "Why?" disclosure. Writing leads;
+// the reading is the context that produced the prompt. Loads the signed-in
+// user's saved birth data, asks the API to compute today's reading for it,
+// then renders the result.
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, ScrollView, StyleSheet, View } from 'react-native';
 import { supabase } from '@/lib/supabase';
 import { fetchDaily, type DailyReading } from '@/lib/api';
 import { colors, spacing } from '@/constants/theme';
-import { Body, Button, Eyebrow, Title } from '@/components/ui';
+import { Body, Button, Eyebrow, Horizon, Title } from '@/components/ui';
 import WhyDisclosure from '@/components/why-disclosure';
 import JournalPrompt from '@/components/journal-prompt';
 import EchoCard from '@/components/echo-card';
@@ -90,16 +91,12 @@ export default function TodayScreen() {
 
       {reading && userId && (
         <>
-          <Title style={styles.headline}>{reading.headline ?? 'Today'}</Title>
-          <Body style={styles.body}>{reading.body}</Body>
-
-          <WhyDisclosure type={reading.type} driver={reading.driver} />
-
           <JournalPrompt
+            style={styles.prompt}
             userId={userId}
             entryDate={date}
             prompt={reading.prompt}
-            type={reading.type}
+            intensity={reading.type}
             driver={reading.driver}
             contentId={reading.content_id}
             headline={reading.headline}
@@ -111,6 +108,14 @@ export default function TodayScreen() {
             entryDate={date}
             driver={reading.driver}
           />
+
+          <Horizon style={styles.divider} />
+
+          <Eyebrow>Today’s sky</Eyebrow>
+          <Title style={styles.headline}>{reading.headline ?? 'Today'}</Title>
+          <Body style={styles.body}>{reading.body}</Body>
+
+          <WhyDisclosure type={reading.type} driver={reading.driver} />
 
           <Button
             label={sharing ? 'Preparing…' : 'Share today'}
@@ -142,6 +147,9 @@ export default function TodayScreen() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
+  // Breathing room so the prompt's kicker doesn't crowd the date above it.
+  prompt: { marginTop: spacing.lg },
+  divider: { marginTop: spacing.xl },
   headline: { marginTop: spacing.sm },
   body: { marginTop: spacing.md },
   spinner: { marginTop: spacing.xxl },

@@ -39,9 +39,10 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index" // index.tsx = the default/home tab
         options={{
-          title: "Today",
+          // Writing is the daily action, so the tab is named for it.
+          title: "Reflect",
           tabBarIcon: ({ color, size }) => (
-            <Ionicons name="sunny-outline" size={size} color={color} />
+            <Ionicons name="create-outline" size={size} color={color} />
           ),
         }}
       />

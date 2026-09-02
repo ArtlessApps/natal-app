@@ -109,8 +109,17 @@ export default function Onboarding() {
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Title>Cast your chart</Title>
-      <Tagline style={styles.sub}>Where the planets were the moment you arrived.</Tagline>
+      <Title>Set up your journal</Title>
+      <Tagline style={styles.sub}>
+        Your birth details tune each day’s prompt to your sky — so what you write is
+        tied to your chart, not a generic horoscope.
+      </Tagline>
+
+      <View style={styles.pitch}>
+        <Body style={styles.pitchLine}>One reflective prompt a day, tagged to the transit behind it.</Body>
+        <Body style={styles.pitchLine}>Echo brings a past entry back when that transit returns.</Body>
+        <Body style={styles.pitchLine}>Private by default — never shared or sold.</Body>
+      </View>
 
       <Eyebrow style={styles.label}>Name</Eyebrow>
       <TextInput style={styles.input} value={name} onChangeText={setName}
@@ -162,7 +171,7 @@ export default function Onboarding() {
       />
 
       <Button
-        label={busy ? 'Reading the sky…' : 'Cast my chart'}
+        label={busy ? 'Setting things up…' : 'Start my journal'}
         onPress={submit}
         disabled={!valid || busy}
         style={styles.submit}
@@ -175,7 +184,15 @@ export default function Onboarding() {
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg + 4, paddingTop: 80, paddingBottom: spacing.xxl },
-  sub: { marginTop: spacing.xs, marginBottom: spacing.xl },
+  sub: { marginTop: spacing.xs, marginBottom: spacing.lg },
+  pitch: {
+    borderLeftWidth: 2,
+    borderLeftColor: colors.gold,
+    paddingLeft: spacing.md,
+    gap: spacing.sm,
+    marginBottom: spacing.lg,
+  },
+  pitchLine: { fontSize: type.small },
   label: { marginBottom: spacing.sm, marginTop: spacing.md },
   switchLabel: { flex: 1 },
   input: {

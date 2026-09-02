@@ -13,7 +13,7 @@ import {
 } from '@/lib/onboarding-paywall';
 import { useIsPlus } from '@/lib/subscription';
 import { colors, spacing } from '@/constants/theme';
-import { Button, Eyebrow } from '@/components/ui';
+import { Button, Eyebrow, Tagline } from '@/components/ui';
 import { expandSign } from '@/constants/astro';
 import { lessonIdForBig3Key } from '@/constants/lessons';
 import Big3Cards, { type Big3Key } from '@/components/big3-cards';
@@ -98,8 +98,13 @@ export default function Reveal() {
         style={styles.shareButton}
       />
 
+      <Tagline style={styles.pitch}>
+        From here it’s one prompt a day — tagged to the sky above it, saved only to
+        your journal.
+      </Tagline>
+
       <Button
-        label="See today’s sky"
+        label="Write today’s reflection"
         onPress={goToApp}
         disabled={!pushReady}
         style={styles.button}
@@ -135,5 +140,6 @@ const styles = StyleSheet.create({
   center: { justifyContent: 'center' },
   eyebrow: { textAlign: 'center', marginBottom: spacing.lg },
   shareButton: { marginTop: spacing.md },
+  pitch: { textAlign: 'center', marginTop: spacing.xl },
   button: { marginTop: 'auto', marginBottom: spacing.xxl - 8 },
 });

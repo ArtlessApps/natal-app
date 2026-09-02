@@ -41,7 +41,7 @@ export default function JournalScreen() {
   }, []);
 
   // Refetch whenever this tab regains focus (e.g. after saving/deleting
-  // an entry in the detail screen or writing a new one on Today).
+  // an entry in the detail screen or writing a new one on Reflect).
   useFocusEffect(load);
 
   const visible = (entries ?? []).filter((e) => matches(e, filters));
@@ -77,7 +77,7 @@ export default function JournalScreen() {
           ) : (
             <Tagline style={styles.empty}>
               {entries.length === 0
-                ? "No entries yet. Answer today's prompt on the Today tab to start."
+                ? 'No entries yet. Answer today’s prompt on the Reflect tab — every entry is tagged to the transit behind it.'
                 : 'Nothing matches those filters.'}
             </Tagline>
           )

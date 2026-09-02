@@ -3,24 +3,36 @@
 // If an entry already exists for today, show it read-only instead of
 // letting the user create a duplicate.
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  StyleProp,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
+  ViewStyle,
+} from 'react-native';
 import { supabase } from '@/lib/supabase';
-import { colors } from '@/constants/theme';
+import { colors, fonts, radius, spacing, type } from '@/constants/theme';
 import type { DailyDriver, DailyReading } from '@/lib/api';
 
 type Props = {
   userId: string;
   entryDate: string; // YYYY-MM-DD, same date sent to /daily
   prompt: string;
-  type: DailyReading['type'];
+  // Named for the journal_entries column it lands in — the theme's type
+  // scale owns the name `type` in this file.
+  intensity: DailyReading['type'];
   driver: DailyDriver;
   contentId: number | null;
   headline: string | null;
   body: string;
+  style?: StyleProp<ViewStyle>;
 };
 
 export default function JournalPrompt({
-  userId, entryDate, prompt, type, driver, contentId, headline, body,
+  userId, entryDate, prompt, intensity, driver, contentId, headline, body, style,
 }: Props) {
   const [loading, setLoading] = useState(true);
   const [text, setText] = useState('');
@@ -60,7 +72,7 @@ export default function JournalPrompt({
       transit_planet: driver.transit_planet,
       natal_planet: driver.natal_planet,
       aspect: driver.aspect,
-      intensity: type,
+      intensity,
       phase: driver.phase,
       headline,
       body,
@@ -72,7 +84,7 @@ export default function JournalPrompt({
   }
 
   return (
-    <View style={styles.wrap}>
+    <View style={[styles.wrap, style]}>
       <Text style={styles.label}>TODAY&apos;S PROMPT</Text>
       <Text style={styles.prompt}>{prompt}</Text>
       {loading ? (
@@ -108,18 +120,50 @@ export default function JournalPrompt({
 
 const styles = StyleSheet.create({
   wrap: { marginTop: 28 },
-  label: { color: colors.muted, fontSize: 12, letterSpacing: 1.5, marginBottom: 8 },
-  prompt: { color: colors.text, fontSize: 17, fontWeight: '600', lineHeight: 24, marginBottom: 14 },
-  spinner: { marginTop: 8 },
-  input: {
-    backgroundColor: colors.surface, color: colors.text, borderRadius: 12,
-    padding: 16, fontSize: 15, minHeight: 90, textAlignVertical: 'top',
+  label: {
+    fontFamily: fonts.bodySemibold,
+    color: colors.goldDeep,
+    fontSize: type.eyebrow,
+    letterSpacing: 2.5,
+    marginBottom: spacing.sm,
   },
-  button: { backgroundColor: colors.accent, borderRadius: 12, padding: 14, alignItems: 'center', marginTop: 12 },
+  prompt: {
+    fontFamily: fonts.display,
+    color: colors.text,
+    fontSize: type.heading,
+    lineHeight: 27,
+    marginBottom: spacing.md,
+  },
+  spinner: { marginTop: spacing.sm },
+  input: {
+    backgroundColor: colors.surface,
+    color: colors.text,
+    fontFamily: fonts.body,
+    fontSize: type.body,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.md,
+    minHeight: 90,
+    textAlignVertical: 'top',
+  },
+  button: {
+    backgroundColor: colors.accent,
+    borderRadius: radius.md,
+    padding: 14,
+    alignItems: 'center',
+    marginTop: spacing.md,
+  },
   buttonDisabled: { opacity: 0.4 },
-  buttonText: { color: colors.bg, fontWeight: '600' },
-  error: { color: colors.error, marginTop: 10 },
-  savedBox: { backgroundColor: colors.surface, borderRadius: 12, padding: 16 },
-  savedText: { color: colors.text, fontSize: 15, lineHeight: 21 },
-  savedNote: { color: colors.muted, fontSize: 12, marginTop: 10 },
+  buttonText: { fontFamily: fonts.bodySemibold, color: colors.bg, fontSize: type.body },
+  error: { fontFamily: fonts.body, color: colors.error, marginTop: 10 },
+  savedBox: {
+    backgroundColor: colors.surface,
+    borderRadius: radius.md,
+    borderWidth: StyleSheet.hairlineWidth,
+    borderColor: colors.border,
+    padding: spacing.md,
+  },
+  savedText: { fontFamily: fonts.body, color: colors.text, fontSize: type.small + 1, lineHeight: 21 },
+  savedNote: { fontFamily: fonts.body, color: colors.muted, fontSize: type.caption, marginTop: 10 },
 });
