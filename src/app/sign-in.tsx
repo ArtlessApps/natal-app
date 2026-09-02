@@ -21,13 +21,23 @@ import { isAppleSignInAvailable, signInWithApple } from '@/lib/auth';
 import { colors, fonts, radius, spacing, type } from '@/constants/theme';
 import { Body, Button, Caption, Tagline } from '@/components/ui';
 
+// App Review demo account. Apple's demo-credential fields expect a
+// username + password, and Sign in with Apple always creates a fresh empty
+// account — so this one email gets a password path with a pre-seeded journal
+// behind it. Everyone else still uses email OTP; the password field only
+// appears once this exact address is typed in.
+const DEMO_EMAIL = 'appreview@nataljournal.com';
+
 export default function SignIn() {
   const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
   const [phase, setPhase] = useState<'email' | 'code'>('email');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [appleAvailable, setAppleAvailable] = useState(false);
+
+  const isDemo = email.trim().toLowerCase() === DEMO_EMAIL;
 
   useEffect(() => {
     let cancelled = false;
@@ -62,6 +72,19 @@ export default function SignIn() {
     setBusy(false);
     if (error) setError(error.message || 'Something went wrong sending the code — try again.');
     else setPhase('code');
+  }
+
+  // Demo-account only: password grant instead of OTP (see DEMO_EMAIL note).
+  async function signInWithPassword() {
+    setBusy(true);
+    setError('');
+    const { error } = await supabase.auth.signInWithPassword({
+      email: email.trim(),
+      password,
+    });
+    setBusy(false);
+    if (error) setError('That email and password didn’t match — check and try again.');
+    // On success the root layout hears the auth change and routes us.
   }
 
   async function verifyCode() {
@@ -119,14 +142,38 @@ export default function SignIn() {
             onChangeText={setEmail}
             editable={!busy}
           />
-          <Button
-            label={busy ? 'Sending…' : 'Send code'}
-            onPress={sendCode}
-            disabled={busy || !email.includes('@')}
-          />
-          <Caption style={styles.hint}>
-            No password. We’ll email you a code.
-          </Caption>
+          {isDemo ? (
+            <>
+              <TextInput
+                style={styles.input}
+                placeholder="Password"
+                placeholderTextColor={colors.muted}
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry
+                value={password}
+                onChangeText={setPassword}
+                editable={!busy}
+              />
+              <Button
+                label={busy ? 'Signing in…' : 'Sign in'}
+                onPress={signInWithPassword}
+                disabled={busy || password.length === 0}
+              />
+              <Caption style={styles.hint}>Reviewer access — password sign-in.</Caption>
+            </>
+          ) : (
+            <>
+              <Button
+                label={busy ? 'Sending…' : 'Send code'}
+                onPress={sendCode}
+                disabled={busy || !email.includes('@')}
+              />
+              <Caption style={styles.hint}>
+                No password. We’ll email you a code.
+              </Caption>
+            </>
+          )}
         </>
       ) : (
         <>
