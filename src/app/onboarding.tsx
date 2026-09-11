@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { View, TextInput, ScrollView, StyleSheet, Switch } from 'react-native';
+import { Pressable, View, TextInput, ScrollView, StyleSheet, Switch, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { fetchNatalChart } from '../lib/api';
@@ -177,6 +177,13 @@ export default function Onboarding() {
         style={styles.submit}
       />
       {!!error && <Caption style={styles.error}>{error}</Caption>}
+
+      {/* Someone reinstalling or switching devices who already linked a real
+          account elsewhere — send them to sign in instead of quietly
+          creating a second, unlinked anonymous profile. */}
+      <Pressable onPress={() => router.push('/sign-in')} style={styles.signInLink}>
+        <Text style={styles.signInLinkText}>Already have an account? Sign in</Text>
+      </Pressable>
     </ScrollView>
   );
 }
@@ -207,4 +214,6 @@ const styles = StyleSheet.create({
   note: { marginTop: spacing.sm },
   submit: { marginTop: spacing.xl },
   error: { color: colors.error, textAlign: 'center', marginTop: spacing.md },
+  signInLink: { marginTop: spacing.lg, alignItems: 'center' },
+  signInLinkText: { color: colors.accent, fontFamily: fonts.bodyMedium, fontSize: type.small },
 });

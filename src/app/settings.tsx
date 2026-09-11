@@ -7,6 +7,7 @@ import { useRouter } from 'expo-router';
 import { colors, spacing } from '@/constants/theme';
 import { Body, Caption, Card, Eyebrow, Title } from '@/components/ui';
 import ConfirmDelete from '@/components/confirm-delete';
+import AccountBackup from '@/components/account-backup';
 import { deleteAccount as deleteAccountOnServer } from '@/lib/api';
 import { PRIVACY_URL } from '@/constants/links';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +27,7 @@ function formatBirthDate(iso: string): string {
 export default function Settings() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -34,25 +36,27 @@ export default function Settings() {
   const [confirmingDeleteAccount, setConfirmingDeleteAccount] = useState(false);
   const [deletingAccount, setDeletingAccount] = useState(false);
 
+  async function loadProfile() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    const { data, error: dbError } = await supabase
+      .from('profiles')
+      .select('name, birth_date, birth_time, birth_place_label')
+      .eq('id', user.id)
+      .single<Profile>();
+    if (dbError) setError('Could not load your profile.');
+    else {
+      setEmail(user.email ?? '');
+      setIsAnonymous(!!user.is_anonymous);
+      setProfile(data);
+    }
+    setLoading(false);
+  }
+
   useEffect(() => {
-    let active = true;
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-      const { data, error: dbError } = await supabase
-        .from('profiles')
-        .select('name, birth_date, birth_time, birth_place_label')
-        .eq('id', user.id)
-        .single<Profile>();
-      if (!active) return;
-      if (dbError) setError('Could not load your profile.');
-      else {
-        setEmail(user.email ?? '');
-        setProfile(data);
-      }
-      setLoading(false);
+    void (async () => {
+      await loadProfile();
     })();
-    return () => { active = false; };
   }, []);
 
   function goBack() {
@@ -94,11 +98,24 @@ export default function Settings() {
         <>
           <Eyebrow style={styles.section}>Account</Eyebrow>
           <Card>
-            <Caption>Email</Caption>
-            <Body style={styles.rowValue}>{email || '—'}</Body>
-            <Caption style={styles.rowLabel}>Name</Caption>
+            {!isAnonymous && (
+              <>
+                <Caption>Email</Caption>
+                <Body style={styles.rowValue}>{email || '—'}</Body>
+              </>
+            )}
+            <Caption style={isAnonymous ? undefined : styles.rowLabel}>Name</Caption>
             <Body style={styles.rowValue}>{profile.name}</Body>
           </Card>
+
+          {isAnonymous && (
+            <>
+              <Eyebrow style={styles.section}>Back up your data</Eyebrow>
+              <Card>
+                <AccountBackup onLinked={loadProfile} />
+              </Card>
+            </>
+          )}
 
           <Eyebrow style={styles.section}>Birth chart</Eyebrow>
           <Card>
@@ -121,18 +138,20 @@ export default function Settings() {
           </Pressable>
 
           <View style={styles.accountActionsSection}>
-            {confirmingSignOut ? (
-              <ConfirmDelete
-                message="Sign out of Natal on this device?"
-                confirmLabel={signingOut ? 'Signing out…' : 'Sign out'}
-                busy={signingOut}
-                onConfirm={signOut}
-                onCancel={() => setConfirmingSignOut(false)}
-              />
-            ) : (
-              <Pressable onPress={() => setConfirmingSignOut(true)}>
-                <Text style={styles.signOutLink}>Sign out</Text>
-              </Pressable>
+            {!isAnonymous && (
+              confirmingSignOut ? (
+                <ConfirmDelete
+                  message="Sign out of Natal on this device?"
+                  confirmLabel={signingOut ? 'Signing out…' : 'Sign out'}
+                  busy={signingOut}
+                  onConfirm={signOut}
+                  onCancel={() => setConfirmingSignOut(false)}
+                />
+              ) : (
+                <Pressable onPress={() => setConfirmingSignOut(true)}>
+                  <Text style={styles.signOutLink}>Sign out</Text>
+                </Pressable>
+              )
             )}
 
             {confirmingDeleteAccount ? (

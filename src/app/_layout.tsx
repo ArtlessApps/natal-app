@@ -21,9 +21,11 @@ import {
   Outfit_700Bold,
 } from '@expo-google-fonts/outfit';
 import { supabase } from '../lib/supabase';
+import { ensureSession } from '../lib/auth';
 import { registerForPushNotifications } from '../lib/notifications';
 import { configurePurchases, syncPurchasesUser } from '../lib/subscription';
-import { colors } from '../constants/theme';
+import { colors, spacing } from '../constants/theme';
+import { Body, Button } from '../components/ui';
 
 // Keep the native splash screen visible until we explicitly hide it below.
 SplashScreen.preventAutoHideAsync();
@@ -51,6 +53,8 @@ function RootLayout() {
   const [session, setSession] = useState<Session | null>(null);
   const [hasProfile, setHasProfile] = useState<boolean | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionError, setSessionError] = useState(false);
+  const [retryTick, setRetryTick] = useState(0);
   const router = useRouter();
   const segments = useSegments(); // which screen group we're currently in
 
@@ -82,13 +86,22 @@ function RootLayout() {
   // callback that clears it) rather than in a separate effect reacting to
   // `session` — otherwise a stale hasProfile=true from a previous signed-in
   // user could survive into the next sign-in and skip effect 2's check.
+  //
+  // No session on first launch does NOT mean "send them to sign-in" — that
+  // was the App Store 5.1.1(v) rejection (non-account features required
+  // registering). ensureSession() silently creates an anonymous session
+  // instead, so onboarding/chart/journal/learn all work with nothing typed
+  // in. Real sign-in stays available, but only ever reached voluntarily
+  // (onboarding's "I already have an account" link, Settings' backup flow).
   useEffect(() => {
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
-      if (!data.session) setHasProfile(null);
+    let cancelled = false;
+    ensureSession().then((s) => {
+      if (cancelled) return;
+      setSession(s);
+      setSessionError(!s);
+      if (!s) setHasProfile(null);
       setLoading(false);
-      // Anonymous → known user (or clear on cold start with no session).
-      syncPurchasesUser(data.session?.user.id ?? null);
+      syncPurchasesUser(s?.user.id ?? null);
     });
     // Fires on sign-in, sign-out, token refresh — keeps state in sync.
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -96,8 +109,11 @@ function RootLayout() {
       if (!s) setHasProfile(null);
       syncPurchasesUser(s?.user.id ?? null);
     });
-    return () => sub.subscription.unsubscribe();
-  }, []);
+    return () => {
+      cancelled = true;
+      sub.subscription.unsubscribe();
+    };
+  }, [retryTick]);
 
   // 2) When logged in, check whether onboarding is done (profile exists).
   // Re-runs on navigation (not just on session change) so it picks up the
@@ -119,19 +135,20 @@ function RootLayout() {
   // Top-level stack screens (outside the tab group) that a signed-in,
   // onboarded user is allowed to be on without getting bounced back to
   // the tabs — add new ones here as they're built (e.g. journal/[id]).
-  // 'invite' is the public guest page (Step 8.6): a signed-in user opening
-  // their own link must not be bounced to the tabs.
-  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings'];
+  // 'invite' is the public guest page (Step 8.6) — a guest now also gets a
+  // silent anonymous session (see effect 1), so it needs the same
+  // no-profile-yet exemption as 'onboarding'/'reveal', or they'd get bounced
+  // into onboarding mid-invite. 'sign-in' is reached only voluntarily now
+  // (never as a forced gate) — exempt it too so tapping "sign in" doesn't
+  // immediately bounce back out.
+  const NO_PROFILE_EXEMPT_SEGMENTS = ['onboarding', 'reveal', 'invite', 'sign-in'];
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings', 'sign-in'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
     const onAllowedStackScreen = ALLOWED_STACK_SEGMENTS.includes(segments[0] ?? '');
 
-    if (!session && segments[0] !== 'sign-in' && segments[0] !== 'invite') {
-      // Guests hitting an /invite/<token> link are logged out by design —
-      // don't bounce them to sign-in (Step 8.6D).
-      router.replace('/sign-in');
-    } else if (session && hasProfile === false && segments[0] !== 'onboarding' && segments[0] !== 'reveal') {
+    if (session && hasProfile === false && !NO_PROFILE_EXEMPT_SEGMENTS.includes(segments[0] ?? '')) {
       router.replace('/onboarding');
     } else if (session && hasProfile === true && !inTabs && !onAllowedStackScreen) {
       router.replace('/(tabs)');
@@ -168,6 +185,17 @@ function RootLayout() {
     return (
       <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center' }}>
         <ActivityIndicator color={colors.accent} />
+      </View>
+    );
+  }
+
+  // Couldn't even get a silent anonymous session (almost always: no network
+  // on first launch). Never falls back to a sign-in wall — just retry.
+  if (sessionError) {
+    return (
+      <View style={{ flex: 1, backgroundColor: colors.bg, justifyContent: 'center', padding: spacing.xl, gap: spacing.md }}>
+        <Body style={{ textAlign: 'center' }}>Couldn’t connect. Check your connection and try again.</Body>
+        <Button label="Try again" onPress={() => { setLoading(true); setRetryTick((t) => t + 1); }} />
       </View>
     );
   }
