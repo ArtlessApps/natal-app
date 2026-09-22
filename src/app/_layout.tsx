@@ -140,9 +140,14 @@ function RootLayout() {
   // no-profile-yet exemption as 'onboarding'/'reveal', or they'd get bounced
   // into onboarding mid-invite. 'sign-in' is reached only voluntarily now
   // (never as a forced gate) — exempt it too so tapping "sign in" doesn't
-  // immediately bounce back out.
+  // immediately bounce back out. It must NOT also go in
+  // ALLOWED_STACK_SEGMENTS below: that list is checked by the
+  // hasProfile===true branch too, and if 'sign-in' were in it, a
+  // successful sign-in would never redirect away from this screen —
+  // exactly the App Store 2.1(a) rejection where Apple/demo sign-in
+  // appeared to do nothing.
   const NO_PROFILE_EXEMPT_SEGMENTS = ['onboarding', 'reveal', 'invite', 'sign-in'];
-  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings', 'sign-in'];
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
