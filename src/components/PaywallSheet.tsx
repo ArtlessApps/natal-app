@@ -4,6 +4,7 @@
 import { useEffect, useState } from 'react';
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -14,6 +15,7 @@ import {
 import type { PurchasesPackage } from 'react-native-purchases';
 import { colors, fonts, radius, shadow, spacing, type } from '@/constants/theme';
 import { Body, Button, Caption, Eyebrow, Heading, Title } from '@/components/ui';
+import { PRIVACY_URL, TERMS_URL } from '@/constants/links';
 import { track } from '@/lib/analytics';
 import {
   fetchPlusPackages,
@@ -216,7 +218,7 @@ export default function PaywallSheet({ visible, source, onClose, onPurchased }: 
               <View style={styles.plans}>
                 {annual && (
                   <PlanRow
-                    label="Annual"
+                    label="Natal Plus Annual"
                     priceLabel={`${annual.product.priceString}/yr`}
                     detail={trialDetail(annual, 'yr')}
                     selected={selected === 'annual'}
@@ -225,7 +227,7 @@ export default function PaywallSheet({ visible, source, onClose, onPurchased }: 
                 )}
                 {monthly && (
                   <PlanRow
-                    label="Monthly"
+                    label="Natal Plus Monthly"
                     priceLabel={`${monthly.product.priceString}/mo`}
                     detail={trialDetail(monthly, 'mo')}
                     selected={selected === 'monthly'}
@@ -254,9 +256,31 @@ export default function PaywallSheet({ visible, source, onClose, onPurchased }: 
               {!!error && <Caption style={styles.error}>{error}</Caption>}
               {!!status && <Caption style={styles.center}>{status}</Caption>}
 
+              {/* Required auto-renew disclosure + EULA/privacy links (Guideline 3.1.2). */}
               <Caption style={styles.finePrint}>
-                Cancel anytime in your Apple ID subscriptions. No custom cancel screens — by design.
+                Natal Plus is an auto-renewing subscription: 1 year (Annual) or 1 month
+                (Monthly). Payment is charged to your Apple ID when you confirm, or when a
+                free trial ends. It renews automatically at the same price unless canceled at
+                least 24 hours before the end of the current period. Manage or cancel anytime
+                in your Apple ID subscription settings.
               </Caption>
+              <View style={styles.legalRow}>
+                <Text
+                  style={styles.legalLink}
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(TERMS_URL)}
+                >
+                  Terms of Use (EULA)
+                </Text>
+                <Text style={styles.legalDot}>·</Text>
+                <Text
+                  style={styles.legalLink}
+                  accessibilityRole="link"
+                  onPress={() => Linking.openURL(PRIVACY_URL)}
+                >
+                  Privacy Policy
+                </Text>
+              </View>
             </>
           )}
         </ScrollView>
@@ -301,10 +325,14 @@ function trialDetail(pkg: PurchasesPackage, period: 'yr' | 'mo'): string {
     const unit = intro.periodUnit.toLowerCase();
     const n = intro.periodNumberOfUnits;
     const unitLabel = n === 1 ? unit : `${unit}s`;
-    // e.g. "7 days free, then $39.99/yr. Cancel anytime."
-    return `${n} ${unitLabel} free, then ${pkg.product.priceString}/${period}. Cancel anytime.`;
+    // e.g. "7 days free, then $39.99 per year, auto-renewing. Cancel anytime."
+    return `${n} ${unitLabel} free, then ${pkg.product.priceString} per ${periodName(period)}, auto-renewing. Cancel anytime.`;
   }
-  return `${pkg.product.priceString}/${period}. Cancel anytime.`;
+  return `${pkg.product.priceString} per ${periodName(period)}, auto-renewing. Cancel anytime.`;
+}
+
+function periodName(period: 'yr' | 'mo'): string {
+  return period === 'yr' ? 'year' : 'month';
 }
 
 function ctaLabel(pkg: PurchasesPackage | null): string {
@@ -382,4 +410,18 @@ const styles = StyleSheet.create({
   error: { color: colors.error, textAlign: 'center', marginTop: spacing.sm },
   center: { textAlign: 'center', marginTop: spacing.sm },
   finePrint: { textAlign: 'center', marginTop: spacing.lg },
+  legalRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: spacing.sm,
+    marginTop: spacing.md,
+  },
+  legalLink: {
+    fontFamily: fonts.bodyMedium,
+    fontSize: type.small,
+    color: colors.accent,
+    textDecorationLine: 'underline',
+  },
+  legalDot: { color: colors.muted },
 });

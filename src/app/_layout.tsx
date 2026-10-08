@@ -104,10 +104,24 @@ function RootLayout() {
       syncPurchasesUser(s?.user.id ?? null);
     });
     // Fires on sign-in, sign-out, token refresh — keeps state in sync.
-    const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
+    // Any identity change (anonymous → Apple, demo-password sign-in, sign-out)
+    // invalidates hasProfile: it belonged to the previous user. Without this a
+    // stale value survives the switch — effect 2 skips re-checking a stale
+    // `true`, and a stale `false` never gets re-evaluated for the new user.
+    // Token refreshes keep the same user, so they don't reset anything.
+    const { data: sub } = supabase.auth.onAuthStateChange((event, s) => {
       setSession(s);
-      if (!s) setHasProfile(null);
+      if (!s || event === 'SIGNED_IN' || event === 'SIGNED_OUT') setHasProfile(null);
       syncPurchasesUser(s?.user.id ?? null);
+      // Sign-out / account deletion: drop back to a fresh anonymous session
+      // so routing sends them to onboarding instead of leaving them on a
+      // screen with no session. Deferred — supabase-js deadlocks if another
+      // auth call runs inside this callback.
+      if (event === 'SIGNED_OUT') {
+        setTimeout(() => {
+          if (!cancelled) void ensureSession();
+        }, 0);
+      }
     });
     return () => {
       cancelled = true;
@@ -152,8 +166,17 @@ function RootLayout() {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';
     const onAllowedStackScreen = ALLOWED_STACK_SEGMENTS.includes(segments[0] ?? '');
+    // The sign-in exemption only holds while the session is still the silent
+    // anonymous one (i.e. the user is looking at the sign-in form). Once a
+    // real sign-in lands, a brand-new account has no profile yet — it has to
+    // go to onboarding, not sit on /sign-in. Leaving it exempt was the second
+    // App Store 2.1(a) rejection: "no further action occurred" after Sign in
+    // with Apple on a fresh install.
+    const signedInOnSignInScreen = segments[0] === 'sign-in' && !!session && !session.user.is_anonymous;
+    const exemptFromOnboarding =
+      NO_PROFILE_EXEMPT_SEGMENTS.includes(segments[0] ?? '') && !signedInOnSignInScreen;
 
-    if (session && hasProfile === false && !NO_PROFILE_EXEMPT_SEGMENTS.includes(segments[0] ?? '')) {
+    if (session && hasProfile === false && !exemptFromOnboarding) {
       router.replace('/onboarding');
     } else if (session && hasProfile === true && !inTabs && !onAllowedStackScreen) {
       router.replace('/(tabs)');

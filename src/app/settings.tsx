@@ -9,7 +9,7 @@ import { Body, Caption, Card, Eyebrow, Title } from '@/components/ui';
 import ConfirmDelete from '@/components/confirm-delete';
 import AccountBackup from '@/components/account-backup';
 import { deleteAccount as deleteAccountOnServer } from '@/lib/api';
-import { PRIVACY_URL } from '@/constants/links';
+import { PRIVACY_URL, SUPPORT_URL, TERMS_URL } from '@/constants/links';
 import { supabase } from '@/lib/supabase';
 
 type Profile = {
@@ -135,6 +135,12 @@ export default function Settings() {
           </Caption>
           <Pressable onPress={() => Linking.openURL(PRIVACY_URL)} style={styles.privacyLinkWrap}>
             <Text style={styles.privacyLink}>Privacy Policy</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(TERMS_URL)} style={styles.privacyLinkWrap}>
+            <Text style={styles.privacyLink}>Terms of Use</Text>
+          </Pressable>
+          <Pressable onPress={() => Linking.openURL(SUPPORT_URL)} style={styles.privacyLinkWrap}>
+            <Text style={styles.privacyLink}>Support</Text>
           </Pressable>
 
           <View style={styles.accountActionsSection}>
