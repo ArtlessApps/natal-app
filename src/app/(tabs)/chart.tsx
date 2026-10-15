@@ -12,6 +12,7 @@ import { lessonIdForBig3Key, lessonIdForPlanetKey } from '@/constants/lessons';
 import { getChart, getCompletedLessonIds, resolvePlacement, type Chart, type Placementish } from '@/lib/learn';
 import { useIsPlus } from '@/lib/subscription';
 import { supabase } from '@/lib/supabase';
+import AddBirthDetails from '@/components/add-birth-details';
 import Big3Cards, { type Big3Key } from '@/components/big3-cards';
 import ChartWheel from '@/components/chart-wheel';
 import LockedFeatureRow from '@/components/locked-feature-row';
@@ -70,11 +71,18 @@ export default function ChartScreen() {
     );
   }
 
+  // Birth details are optional (App Store 5.1.1(v)) — no chart yet means
+  // they skipped them, so offer to add them rather than an error.
   if (!chart) {
     return (
-      <View style={[styles.wrap, styles.center]}>
-        <Body style={styles.error}>We couldn’t load your chart.</Body>
-      </View>
+      <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
+        <Title>My Chart</Title>
+        <Body style={styles.subtitle}>Your whole sky, at a glance.</Body>
+        <AddBirthDetails
+          title="Cast your chart"
+          body="Your chart is a map of the sky at the moment you were born. Add your birth date, time, and place to see your Big 3, every placement, and the wheel."
+        />
+      </ScrollView>
     );
   }
 
@@ -187,7 +195,6 @@ const styles = StyleSheet.create({
   center: { justifyContent: 'center', alignItems: 'center' },
   container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
   subtitle: { marginTop: spacing.xs, marginBottom: spacing.lg },
-  error: { color: colors.error },
 
   big3Label: { marginTop: spacing.xl },
   placementsLabel: { marginTop: spacing.xl },

@@ -45,7 +45,7 @@ export default function LearnLevel({
             ? lesson.intro
             : placement
               ? `${expandSign(placement.signAbbr)}${placement.house ? ` · ${houseOrdinal(placement.house)} house` : ''}`
-              : 'Not in your chart';
+              : chart ? 'Not in your chart' : lesson.intro;
           return (
             <Pressable
               key={lesson.id}

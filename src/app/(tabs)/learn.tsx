@@ -6,6 +6,7 @@ import { useFocusEffect, useRouter } from 'expo-router';
 import { ActivityIndicator, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, fonts, spacing, type } from '@/constants/theme';
 import { Body, Caption, Card, Title } from '@/components/ui';
+import AddBirthDetails from '@/components/add-birth-details';
 import LearnLevel from '@/components/learn-level';
 import PaywallSheet from '@/components/PaywallSheet';
 import { ALL_UNLOCKABLE_LESSONS, LEVELS } from '@/constants/lessons';
@@ -63,6 +64,16 @@ export default function LearnScreen() {
         <Caption style={styles.progressCount}>{doneCount} of {ALL_UNLOCKABLE_LESSONS.length} lessons complete</Caption>
       </Card>
 
+      {/* Birth details are optional (App Store 5.1.1(v)); lessons still read
+          fine without them, just not tied to the user's own placements. */}
+      {!chart && (
+        <AddBirthDetails
+          title="See your own placements"
+          body="Every lesson works on its own. Add your birth details and each one opens on where that planet sits in your chart."
+          style={styles.personalize}
+        />
+      )}
+
       {LEVELS.map((level) => (
         <LearnLevel
           key={level.id}
@@ -97,4 +108,5 @@ const styles = StyleSheet.create({
   progressTrack: { height: 8, backgroundColor: colors.bg, borderRadius: 999, marginTop: spacing.md, overflow: 'hidden' },
   progressFill: { height: 8, backgroundColor: colors.accent, borderRadius: 999 },
   progressCount: { marginTop: spacing.sm },
+  personalize: { marginBottom: spacing.xl },
 });

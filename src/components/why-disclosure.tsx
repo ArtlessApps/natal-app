@@ -9,13 +9,16 @@ import type { DailyDriver, DailyReading } from '@/lib/api';
 type Props = {
   type: DailyReading['type'];
   driver: DailyDriver;
+  // false when the user skipped birth details — the reading is the
+  // collective sky, so there's no "your chart" to speak of.
+  personal?: boolean;
 };
 
-function driverLine(type: Props['type'], driver: DailyDriver): string {
+function driverLine(type: Props['type'], driver: DailyDriver, personal: boolean): string {
   if (type === 'WALKING') {
     const glyph = PLANET_GLYPHS[driver.transit_planet] ?? '';
     const phase = driver.phase && driver.phase !== 'Direct' ? ` (${driver.phase})` : '';
-    return `${driver.transit_planet} ${glyph} walking through ${driver.sign ?? 'the sky'}${phase} — no major aspect to your chart today.`;
+    return `${driver.transit_planet} ${glyph} walking through ${driver.sign ?? 'the sky'}${phase}${personal ? ' — no major aspect to your chart today.' : ' — today’s spotlight in the sky.'}`;
   }
   const tGlyph = PLANET_GLYPHS[driver.transit_planet] ?? '';
   const nGlyph = driver.natal_planet ? PLANET_GLYPHS[driver.natal_planet] ?? '' : '';
@@ -24,7 +27,7 @@ function driverLine(type: Props['type'], driver: DailyDriver): string {
   return `Transiting ${driver.transit_planet} ${tGlyph} ${driver.aspect} ${aGlyph} natal ${driver.natal_planet} ${nGlyph}${orb}`;
 }
 
-export default function WhyDisclosure({ type, driver }: Props) {
+export default function WhyDisclosure({ type, driver, personal = true }: Props) {
   const [open, setOpen] = useState(false);
   const lesson = driver.aspect ? ASPECT_LESSONS[driver.aspect] : null;
 
@@ -40,7 +43,7 @@ export default function WhyDisclosure({ type, driver }: Props) {
       </Pressable>
       {open && (
         <View style={styles.body}>
-          <Text style={styles.driverLine}>{driverLine(type, driver)}</Text>
+          <Text style={styles.driverLine}>{driverLine(type, driver, personal)}</Text>
           {driver.house != null && (
             <Text style={styles.houseLine}>Landing in your {driver.house}th house.</Text>
           )}

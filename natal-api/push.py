@@ -3,7 +3,8 @@ Daily push pipeline (PRD 4.7 / Build Phase 6).
 
 An hourly cron hits POST /cron/daily-push. For each profile that:
   - has a push_token
-  - has birth data + tz_str
+  - has a tz_str (from the birth place, or the device's zone when birth
+    details were skipped — they're optional, App Store 5.1.1(v))
   - is currently at notify_hour_local in their timezone
   - hasn't already been pushed today (last_push_date != local today)
 
@@ -75,8 +76,6 @@ def profiles_due_now(client) -> list[dict]:
     )
     due: list[dict] = []
     for row in response.data or []:
-        if not row.get("birth_date"):
-            continue
         tz_str = _ensure_tz(client, row)
         if not tz_str:
             continue
@@ -110,6 +109,12 @@ def compute_headline(row: dict, client) -> tuple[str, date]:
     assert local is not None  # filtered in profiles_due_now
     target = local.date()
 
+    if not row.get("birth_date"):
+        # No birth details — the collective sky, same as the app's /daily/sky.
+        driver = engine.compute_sky(target)
+        content = engine.lookup_content(driver, user_id=row["id"], target_date=target)
+        return _short_headline(content), target
+
     birth_time = row.get("birth_time") or "12:00"
     hour_s, minute_s = birth_time.split(":")[:2]
     subject = engine.build_natal_subject(
@@ -127,11 +132,15 @@ def compute_headline(row: dict, client) -> tuple[str, date]:
     # Same user_id/date the app's /daily call uses, so the headline pushed at
     # 08:00 is the one the app shows when the notification is tapped.
     content = engine.lookup_content(driver, user_id=row["id"], target_date=target)
+    return _short_headline(content), target
+
+
+def _short_headline(content: dict) -> str:
     headline = (content.get("headline") or "").strip() or "Your sky for today."
     # Expo push title/body should stay short; PRD caps headline at 90 chars.
     if len(headline) > 90:
         headline = headline[:87].rstrip() + "…"
-    return headline, target
+    return headline
 
 
 def build_message(token: str, headline: str) -> dict[str, Any]:

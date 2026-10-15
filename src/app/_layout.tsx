@@ -22,6 +22,7 @@ import {
 } from '@expo-google-fonts/outfit';
 import { supabase } from '../lib/supabase';
 import { ensureSession } from '../lib/auth';
+import { onProfileCreated } from '../lib/profile-events';
 import { registerForPushNotifications } from '../lib/notifications';
 import { configurePurchases, syncPurchasesUser } from '../lib/subscription';
 import { colors, spacing } from '../constants/theme';
@@ -144,6 +145,11 @@ function RootLayout() {
       .then(({ data }) => setHasProfile(!!data));
   }, [session, segments]);
 
+  // 2b) Onboarding's "Skip for now" goes straight to the tabs, not via the
+  // exempt reveal screen — so it announces the new profile row first, or
+  // effect 3 would see the stale `false` and bounce it back to onboarding.
+  useEffect(() => onProfileCreated(() => setHasProfile(true)), []);
+
   // 3) Route based on state. segments[0] tells us where we are,
   //    so we only redirect when we're in the WRONG place (avoids loops).
   // Top-level stack screens (outside the tab group) that a signed-in,
@@ -161,7 +167,11 @@ function RootLayout() {
   // exactly the App Store 2.1(a) rejection where Apple/demo sign-in
   // appeared to do nothing.
   const NO_PROFILE_EXEMPT_SEGMENTS = ['onboarding', 'reveal', 'invite', 'sign-in'];
-  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings'];
+  // 'onboarding' is allowed for an onboarded user because birth details are
+  // optional (App Store 5.1.1(v)): someone who skipped them comes back to the
+  // same form later (onboarding?add=1) from the Chart/Learn/Connections/
+  // Settings prompts.
+  const ALLOWED_STACK_SEGMENTS = ['reveal', 'journal', 'learn', 'friends', 'invite', 'settings', 'onboarding'];
   useEffect(() => {
     if (loading) return;
     const inTabs = segments[0] === '(tabs)';

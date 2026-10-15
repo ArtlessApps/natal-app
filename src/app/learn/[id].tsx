@@ -6,6 +6,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
 import { colors, spacing } from '@/constants/theme';
 import { Body, Button, Caption, Eyebrow, Tagline, Title } from '@/components/ui';
+import AddBirthDetails from '@/components/add-birth-details';
 import LessonPlacementCard from '@/components/lesson-placement-card';
 import { PLANET_GLYPHS } from '@/constants/astro';
 import { findLesson } from '@/constants/lessons';
@@ -20,6 +21,7 @@ export default function LessonDetail() {
   const found = findLesson(id);
 
   const [placement, setPlacement] = useState<Placementish | null>(null);
+  const [hasChart, setHasChart] = useState(true);
   const [content, setContent] = useState<string | null>(null);
   const [done, setDone] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -40,6 +42,7 @@ export default function LessonDetail() {
         ]);
         if (!active) return;
         setDone(completed.has(found.lesson.id));
+        setHasChart(!!chart);
         if (chart && found.lesson.planetKey) {
           const pl = resolvePlacement(chart, found.lesson.planetKey, birthTimeKnown);
           setPlacement(pl);
@@ -105,7 +108,15 @@ export default function LessonDetail() {
       <Eyebrow>Level {level.index} · {level.title}</Eyebrow>
       <Title style={styles.title}>{lesson.title}</Title>
 
-      {!isStatic && <LessonPlacementCard glyph={glyph} placement={placement} />}
+      {!isStatic && (hasChart ? (
+        <LessonPlacementCard glyph={glyph} placement={placement} />
+      ) : (
+        <AddBirthDetails
+          title="Where is yours?"
+          body="Add your birth details to see this placement in your own chart, with a reading for it."
+          style={styles.personalize}
+        />
+      ))}
 
       <Body style={styles.intro}>{lesson.intro}</Body>
 
@@ -141,6 +152,7 @@ const styles = StyleSheet.create({
   back: { color: colors.accent, fontSize: 15, marginBottom: spacing.lg },
   title: { marginTop: spacing.xs, marginBottom: spacing.lg },
   intro: { marginBottom: spacing.md },
+  personalize: { marginBottom: spacing.lg },
   pending: { marginTop: spacing.xs },
   button: { marginTop: spacing.xl },
   error: { color: colors.error, textAlign: 'center', marginTop: spacing.md },

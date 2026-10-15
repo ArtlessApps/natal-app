@@ -8,15 +8,17 @@ import { colors, spacing } from '@/constants/theme';
 import { Body, Caption, Card, Eyebrow, Title } from '@/components/ui';
 import ConfirmDelete from '@/components/confirm-delete';
 import AccountBackup from '@/components/account-backup';
+import AddBirthDetails from '@/components/add-birth-details';
 import { deleteAccount as deleteAccountOnServer } from '@/lib/api';
 import { PRIVACY_URL, SUPPORT_URL, TERMS_URL } from '@/constants/links';
 import { supabase } from '@/lib/supabase';
 
+// Name and birth details are all optional (App Store 5.1.1(v)).
 type Profile = {
-  name: string;
-  birth_date: string;
+  name: string | null;
+  birth_date: string | null;
   birth_time: string | null;
-  birth_place_label: string;
+  birth_place_label: string | null;
 };
 
 function formatBirthDate(iso: string): string {
@@ -105,7 +107,7 @@ export default function Settings() {
               </>
             )}
             <Caption style={isAnonymous ? undefined : styles.rowLabel}>Name</Caption>
-            <Body style={styles.rowValue}>{profile.name}</Body>
+            <Body style={styles.rowValue}>{profile.name || '—'}</Body>
           </Card>
 
           {isAnonymous && (
@@ -118,16 +120,29 @@ export default function Settings() {
           )}
 
           <Eyebrow style={styles.section}>Birth chart</Eyebrow>
-          <Card>
-            <Caption>Date</Caption>
-            <Body style={styles.rowValue}>{formatBirthDate(profile.birth_date)}</Body>
-            <Caption style={styles.rowLabel}>Time</Caption>
-            <Body style={styles.rowValue}>
-              {profile.birth_time ?? 'Unknown — chart uses noon'}
-            </Body>
-            <Caption style={styles.rowLabel}>Place</Caption>
-            <Body style={styles.rowValue}>{profile.birth_place_label}</Body>
-          </Card>
+          {profile.birth_date ? (
+            <Card>
+              <Caption>Date</Caption>
+              <Body style={styles.rowValue}>{formatBirthDate(profile.birth_date)}</Body>
+              <Caption style={styles.rowLabel}>Time</Caption>
+              <Body style={styles.rowValue}>
+                {profile.birth_time ?? 'Unknown — chart uses noon'}
+              </Body>
+              <Caption style={styles.rowLabel}>Place</Caption>
+              <Body style={styles.rowValue}>{profile.birth_place_label ?? '—'}</Body>
+              <Pressable
+                onPress={() => router.push({ pathname: '/onboarding', params: { add: '1' } })}
+                style={styles.rowLabel}
+              >
+                <Text style={styles.privacyLink}>Update birth details</Text>
+              </Pressable>
+            </Card>
+          ) : (
+            <AddBirthDetails
+              title="No birth details yet"
+              body="They’re optional. Add them to cast your chart and get prompts tuned to it."
+            />
+          )}
 
           <Eyebrow style={styles.section}>Privacy</Eyebrow>
           <Caption style={styles.privacy}>

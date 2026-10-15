@@ -55,6 +55,18 @@ export async function fetchDaily(birth: BirthData, targetDate: string, userId: s
   return res.json() as Promise<DailyReading>;
 }
 
+// Today's collective sky for a user who hasn't added birth details (they're
+// optional — App Store 5.1.1(v)). Same DailyReading shape; always WALKING.
+export async function fetchSky(targetDate: string, userId: string) {
+  const res = await fetch(`${API_URL}/daily/sky`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ target_date: targetDate, user_id: userId }),
+  });
+  if (!res.ok) throw new Error(`Daily reading failed (${res.status})`);
+  return res.json() as Promise<DailyReading>;
+}
+
 export type Big3 = { sun: string; moon: string; rising: string };
 
 // --- Friend invites (Step 8.6) --------------------------------------------

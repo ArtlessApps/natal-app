@@ -496,6 +496,34 @@ def compute_daily(
         }
 
     # Rotating spotlight fallback (no collision today)
+    return _walking_driver(transit_subject, target_date, natal_subject)
+
+
+def compute_sky(target_date: date) -> dict:
+    """
+    Today's collective sky for someone who hasn't added birth details
+    (App Store 5.1.1(v): birth data must be optional). No natal chart means
+    no transit-to-natal aspects, so this is always the Walking spotlight —
+    whose content keys only on the transiting planet + sign + phase — with
+    house left None. Same noon-UTC moment build_transit_subject uses.
+    """
+    iso = datetime(
+        target_date.year, target_date.month, target_date.day, 12, 0,
+        tzinfo=ZoneInfo("UTC"),
+    ).isoformat()
+    transit_subject = AstrologicalSubjectFactory.from_iso_utc_time(
+        name=f"Sky {target_date.isoformat()}",
+        iso_utc_time=iso,
+        lng=0.0,
+        lat=51.48,  # Greenwich; location only affects houses, which go unused
+        tz_str="UTC",
+        online=False,
+    )
+    return _walking_driver(transit_subject, target_date, natal_subject=None)
+
+
+def _walking_driver(transit_subject, target_date: date, natal_subject=None) -> dict:
+    """The rotating-spotlight driver; house is only computed when a natal chart exists."""
     planet_name = get_planet_for_today(target_date)
     planet_obj = getattr(transit_subject, planet_name.lower(), None)
     sign_name, phase = get_planet_sign_and_phase(planet_obj)
@@ -516,7 +544,7 @@ def compute_daily(
     abs_pos = getattr(planet_obj, "abs_pos", None) if planet_obj else None
     house = (
         get_natal_house_of_transit(abs_pos, natal_subject)
-        if isinstance(abs_pos, (int, float))
+        if natal_subject is not None and isinstance(abs_pos, (int, float))
         else None
     )
 

@@ -3,9 +3,10 @@
 // opens the shared PaywallSheet. Plus raises the cap to MAX_FRIENDS.
 import { useCallback, useState } from 'react';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { ActivityIndicator, FlatList, Platform, Share, StyleSheet, View } from 'react-native';
+import { ActivityIndicator, FlatList, Platform, ScrollView, Share, StyleSheet, View } from 'react-native';
 import { colors, spacing } from '@/constants/theme';
-import { Caption, Tagline } from '@/components/ui';
+import { Body, Caption, Tagline, Title } from '@/components/ui';
+import AddBirthDetails from '@/components/add-birth-details';
 import FriendRow from '@/components/friend-row';
 import FriendsHeader from '@/components/friends-header';
 import PaywallSheet from '@/components/PaywallSheet';
@@ -14,6 +15,7 @@ import {
   createInvite,
   deleteFriend,
   FREE_CONNECTION_LIMIT,
+  getOwnerCompareData,
   listFriends,
   MAX_FRIENDS,
 } from '@/lib/friends';
@@ -37,9 +39,15 @@ export default function FriendsScreen() {
   const [friends, setFriends] = useState<Friend[] | null>(null);
   const [error, setError] = useState('');
   const [paywall, setPaywall] = useState(false);
+  // Comparing needs the user's own chart, and birth details are optional
+  // (App Store 5.1.1(v)) — null while checking.
+  const [hasOwnChart, setHasOwnChart] = useState<boolean | null>(null);
 
   const load = useCallback(() => {
     setError('');
+    getOwnerCompareData()
+      .then((owner) => setHasOwnChart(owner != null))
+      .catch(() => setHasOwnChart(true)); // don't hide the list over a lookup hiccup
     listFriends()
       .then((rows) => setFriends(rows))
       .catch((e) => { setError(e.message ?? 'Could not load Connections'); setFriends([]); });
@@ -82,6 +90,19 @@ export default function FriendsScreen() {
     setError('');
     try { await deleteFriend(id); load(); }
     catch (e: any) { setError(e.message ?? 'Could not remove'); }
+  }
+
+  if (hasOwnChart === false) {
+    return (
+      <ScrollView style={styles.wrap} contentContainerStyle={styles.container}>
+        <Title>Your Connections</Title>
+        <Body style={styles.subtitle}>Compare charts with a Connection and see how you fit together.</Body>
+        <AddBirthDetails
+          title="Start with your chart"
+          body="A comparison sets your chart beside theirs, so yours comes first. Add your birth details, then invite someone to compare."
+        />
+      </ScrollView>
+    );
   }
 
   return (
@@ -132,6 +153,7 @@ export default function FriendsScreen() {
 const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: colors.bg },
   container: { padding: spacing.lg, paddingTop: 70, paddingBottom: spacing.xxl },
+  subtitle: { marginTop: spacing.xs, marginBottom: spacing.lg },
   empty: { textAlign: 'center', marginTop: spacing.xl },
   spinner: { marginTop: spacing.xxl },
   error: { color: colors.error, textAlign: 'center', padding: spacing.md },

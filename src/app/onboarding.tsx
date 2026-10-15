@@ -1,16 +1,34 @@
 import { useEffect, useState } from 'react';
 import { Pressable, View, TextInput, ScrollView, StyleSheet, Switch, Text } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { supabase } from '../lib/supabase';
 import { fetchNatalChart } from '../lib/api';
+import { notifyProfileCreated } from '../lib/profile-events';
 import { colors, fonts, spacing, type } from '../constants/theme';
 import { Body, Button, Caption, Eyebrow, Tagline, Title } from '../components/ui';
 import PlaceSearch from '../components/place-search';
 import { isValidBirthDate, validateBirthDate } from '../lib/birth-date';
 import { searchPlaces, type Place } from '../lib/places';
 
+// IANA zone of the device (e.g. "America/New_York"). A user who skips birth
+// details has no birth place to derive tz_str from, and the daily-push cron
+// needs one to find their ~08:00.
+function deviceTimeZone(): string | null {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || null;
+  } catch {
+    return null;
+  }
+}
+
+// First run, and — with ?add=1 — the place a user who skipped comes back to
+// add their birth details. Everything here is optional (App Store 5.1.1(v)):
+// "Skip for now" creates a bare profile and the app runs on the collective
+// sky until they add details.
 export default function Onboarding() {
   const router = useRouter();
+  const { add } = useLocalSearchParams<{ add?: string }>();
+  const adding = add === '1';
   const [name, setName] = useState('');
   const [date, setDate] = useState('');            // YYYY-MM-DD
   const [dateTouched, setDateTouched] = useState(false);
@@ -24,13 +42,23 @@ export default function Onboarding() {
   const [placeError, setPlaceError] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [skipping, setSkipping] = useState(false);
 
-  // Prefill display name from Sign in with Apple (only present on first auth).
+  // Prefill the name: the one already saved (adding details later), else
+  // Sign in with Apple's (only present on first auth).
   useEffect(() => {
     let cancelled = false;
     void (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (cancelled || !user) return;
+      if (adding) {
+        const { data } = await supabase.from('profiles').select('name').eq('id', user.id).maybeSingle();
+        if (cancelled) return;
+        if (data?.name) {
+          setName((prev) => prev || data.name);
+          return;
+        }
+      }
       const meta = user.user_metadata ?? {};
       const fromApple =
         (typeof meta.full_name === 'string' && meta.full_name.trim()) ||
@@ -40,7 +68,7 @@ export default function Onboarding() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [adding]);
 
   async function onSearchPlaces() {
     if (placeQuery.trim().length < 2) return;
@@ -62,8 +90,9 @@ export default function Onboarding() {
 
   const dateError = dateTouched ? validateBirthDate(date) : null;
 
+  // Name is optional; the birth fields are required only to cast a chart —
+  // skipping them entirely is the other button.
   const valid =
-    name.trim().length > 0 &&
     isValidBirthDate(date) &&
     (timeUnknown || /^\d{2}:\d{2}$/.test(time)) &&
     place !== null;
@@ -75,7 +104,7 @@ export default function Onboarding() {
     try {
       // 1) Ask YOUR engine for the chart (+ derived timezone)
       const { chart, tz_str } = await fetchNatalChart({
-        name: name.trim(),
+        name: name.trim() || 'Me',
         date: date.trim(),
         time: timeUnknown ? null : time,
         lat: place.lat,
@@ -86,7 +115,7 @@ export default function Onboarding() {
       const { data: { user } } = await supabase.auth.getUser();
       const { error: dbError } = await supabase.from('profiles').upsert({
         id: user!.id,
-        name: name.trim(),
+        name: name.trim() || null,
         birth_date: date.trim(),
         birth_time: timeUnknown ? null : time,
         birth_place_label: place.label,
@@ -107,21 +136,61 @@ export default function Onboarding() {
     }
   }
 
+  // No birth details: a bare profile so routing treats onboarding as done.
+  // Today then shows the collective sky (POST /daily/sky); chart features
+  // offer to add details when opened.
+  async function skip() {
+    setSkipping(true); setError('');
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      const { error: dbError } = await supabase.from('profiles').upsert({
+        id: user!.id,
+        name: name.trim() || null,
+        tz_str: deviceTimeZone(),
+        notify_hour_local: 8,
+      });
+      if (dbError) throw dbError;
+      notifyProfileCreated();
+      router.replace('/(tabs)');
+    } catch (e: any) {
+      setError(e.message ?? 'Something went wrong. Try again.');
+      setSkipping(false);
+    }
+  }
+
+  function goBack() {
+    if (router.canGoBack()) router.back();
+    else router.replace('/(tabs)');
+  }
+
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.container}>
-      <Title>Set up your journal</Title>
+      {adding ? (
+        <Pressable onPress={goBack} style={styles.topLink}>
+          <Text style={styles.backText}>← Back</Text>
+        </Pressable>
+      ) : (
+        <Pressable onPress={skip} disabled={skipping || busy} style={[styles.topLink, styles.topLinkRight]}>
+          <Text style={styles.skipText}>Skip for now</Text>
+        </Pressable>
+      )}
+
+      <Title>{adding ? 'Add your birth details' : 'Set up your journal'}</Title>
       <Tagline style={styles.sub}>
-        Your birth details tune each day’s prompt to your sky — so what you write is
-        tied to your chart, not a generic horoscope.
+        {adding
+          ? 'They let us cast your chart, so each day’s prompt follows the transits to your own placements.'
+          : 'Birth details are optional. Add them to tune each day’s prompt to your own chart, or skip and start with today’s sky. You can add them any time.'}
       </Tagline>
 
-      <View style={styles.pitch}>
-        <Body style={styles.pitchLine}>One reflective prompt a day, tagged to the transit behind it.</Body>
-        <Body style={styles.pitchLine}>Echo brings a past entry back when that transit returns.</Body>
-        <Body style={styles.pitchLine}>Private by default — never shared or sold.</Body>
-      </View>
+      {!adding && (
+        <View style={styles.pitch}>
+          <Body style={styles.pitchLine}>One reflective prompt a day, tagged to the sky behind it.</Body>
+          <Body style={styles.pitchLine}>Echo brings a past entry back when that transit returns.</Body>
+          <Body style={styles.pitchLine}>Private by default — never shared or sold.</Body>
+        </View>
+      )}
 
-      <Eyebrow style={styles.label}>Name</Eyebrow>
+      <Eyebrow style={styles.label}>Name (optional)</Eyebrow>
       <TextInput style={styles.input} value={name} onChangeText={setName}
         placeholder="Your name" placeholderTextColor={colors.muted} />
 
@@ -171,26 +240,42 @@ export default function Onboarding() {
       />
 
       <Button
-        label={busy ? 'Setting things up…' : 'Start my journal'}
+        label={busy ? 'Casting your chart…' : adding ? 'Save and see my chart' : 'Cast my chart'}
         onPress={submit}
-        disabled={!valid || busy}
+        disabled={!valid || busy || skipping}
         style={styles.submit}
       />
+      {!adding && (
+        <Button
+          label={skipping ? 'Setting things up…' : 'Skip for now — start with today’s sky'}
+          onPress={skip}
+          disabled={busy || skipping}
+          variant="ghost"
+          style={styles.skipButton}
+        />
+      )}
       {!!error && <Caption style={styles.error}>{error}</Caption>}
 
       {/* Someone reinstalling or switching devices who already linked a real
           account elsewhere — send them to sign in instead of quietly
           creating a second, unlinked anonymous profile. */}
-      <Pressable onPress={() => router.push('/sign-in')} style={styles.signInLink}>
-        <Text style={styles.signInLinkText}>Already have an account? Sign in</Text>
-      </Pressable>
+      {!adding && (
+        <Pressable onPress={() => router.push('/sign-in')} style={styles.signInLink}>
+          <Text style={styles.signInLinkText}>Already have an account? Sign in</Text>
+        </Pressable>
+      )}
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
   scroll: { flex: 1, backgroundColor: colors.bg },
-  container: { padding: spacing.lg + 4, paddingTop: 80, paddingBottom: spacing.xxl },
+  container: { padding: spacing.lg + 4, paddingTop: 60, paddingBottom: spacing.xxl },
+  topLink: { marginBottom: spacing.md },
+  topLinkRight: { alignSelf: 'flex-end' },
+  backText: { color: colors.accent, fontSize: 15 },
+  skipText: { color: colors.accent, fontFamily: fonts.bodyMedium, fontSize: type.body },
+  skipButton: { marginTop: spacing.md },
   sub: { marginTop: spacing.xs, marginBottom: spacing.lg },
   pitch: {
     borderLeftWidth: 2,

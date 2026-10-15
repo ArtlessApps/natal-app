@@ -194,6 +194,31 @@ def daily(req: DailyRequest):
     }
 
 
+class SkyRequest(BaseModel):
+    target_date: str   # the day to compute, "2026-07-07"
+    user_id: str | None = None
+
+
+@app.post("/daily/sky")
+def daily_sky(req: SkyRequest):
+    """
+    /daily for a user with no birth details (they're optional — App Store
+    5.1.1(v)). Same response shape, so the app's Today screen, journal tags
+    and Echo work unchanged; the driver is always WALKING with no house.
+    """
+    target = date_type.fromisoformat(req.target_date)
+    driver = engine.compute_sky(target)
+    content = engine.lookup_content(driver, user_id=req.user_id, target_date=target)
+    return {
+        "type": driver["type"],
+        "driver": driver,
+        "headline": content["headline"],
+        "body": content["body"],
+        "prompt": content["prompt"],
+        "content_id": content["content_id"],
+    }
+
+
 @app.post("/compat")
 def compatibility(req: CompatRequest):
     """Side-by-side Big 3 + synastry-lite insights for two charts (PRD §4.5)."""
